@@ -51,6 +51,7 @@ function frame(now){const elapsed=last?Math.min((now-last)/1000,.05):0;last=now;
  requestAnimationFrame(frame);
 }
 $('pause').addEventListener('click',()=>{paused=!paused;syncPause();});
+document.addEventListener('notebook-motion',e=>{paused=e.detail.paused;syncPause();});
 $('reset').addEventListener('click',()=>{reset();});
 for(const id of ['ratio','velocity'])$(id).addEventListener('input',()=>{reset();});
 $('rate').addEventListener('input',()=>{$('rate-out').textContent=`${$('rate').value}×`;});

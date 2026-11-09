@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const canvas = $('creature-canvas'), ctx = canvas.getContext('2d');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 const world = new Habitat();
-const INK = '#171c1c', PAPER = '#eee8d8', RED = '#e3402c', BLUE = '#1466bf';
+const INK = '#3d4538', PAPER = '#eeeadd', RED = '#986447', BLUE = '#dfe3d1';
 let paused = reduce.matches, inspect = false, visible = true, frameId = 0, last = 0, accumulator = 0, pixelRatio = 1, uiAt = 0;
 const sourceLetters = new Map();
 const scenery = document.createElement('canvas'); scenery.width = WIDTH; scenery.height = HEIGHT;
@@ -12,26 +12,19 @@ function polygon(c, points, fill) { c.beginPath(); points.forEach(([x,y],i) => i
 function line(c, points, color, width = 1) { c.beginPath(); points.forEach(([x,y],i) => i ? c.lineTo(x,y) : c.moveTo(x,y)); c.strokeStyle = color; c.lineWidth = width; c.stroke(); }
 function buildScenery() {
   const rand = randomGenerator(227);
-  bg.fillStyle = BLUE; bg.fillRect(0,0,WIDTH,HEIGHT);
-  const sun = Array.from({length:37},(_,i) => { const a=i/37*Math.PI*2,r=89+rand()*10;return [185+Math.cos(a)*r,163+Math.sin(a)*r]; });
-  polygon(bg,sun,RED);
-  // An angular, branching tree. Its asymmetry stays deterministic across frames.
-  function branch(x,y,length,angle,width,depth) {
-    const ex=x+Math.cos(angle)*length,ey=y+Math.sin(angle)*length;
-    polygon(bg,[[x-width,y+2],[ex-width*.3,ey],[ex+width*.3,ey-2],[x+width,y-2]],INK);
-    if (depth <= 0) return;
-    branch(ex,ey,length*.71,angle-.35-rand()*.26,width*.57,depth-1);
-    branch(ex,ey,length*.58,angle+.45+rand()*.3,width*.5,depth-1);
+  bg.clearRect(0,0,WIDTH,HEIGHT);
+  // Light graphite studies on paper; the habitat shares the notebook's surface.
+  for(let y=26;y<HEIGHT;y+=52)line(bg,[[0,y],[WIDTH,y]],'#a4b09b33',.8);
+  function twig(x,y,len,angle,depth){
+    const ex=x+Math.cos(angle)*len,ey=y+Math.sin(angle)*len;
+    line(bg,[[x,y],[x+Math.cos(angle)*len*.48+4,y+Math.sin(angle)*len*.5],[ex,ey]],'#67755c',depth*.5+.5);
+    if(!depth)return;
+    twig(ex,ey,len*.65,angle-.6,depth-1);twig(ex,ey,len*.67,angle+.5,depth-1);
   }
-  branch(715,511,170,-1.75,23,4); branch(740,490,125,-2.6,15,3);
-  polygon(bg,[[0,506],[47,502],[105,509],[163,503],[244,506],[312,501],[376,508],[440,504],[530,508],[603,501],[681,506],[760,499],[760,620],[0,620]],INK);
-  // Sparse cut marks give the earth an engraved surface.
-  for(let i=0;i<78;i++) { const x=rand()*WIDTH,y=526+rand()*90;line(bg,[[x,y],[x+5+rand()*19,y-3-rand()*7]],i%4?PAPER:RED,.6+rand()); }
-  for(let i=0;i<25;i++) {const x=rand()*WIDTH;line(bg,[[x,507],[x-5,489-rand()*18],[x+3,500]],INK,1.6);}
-  for(let i=0;i<2500;i++) {bg.globalAlpha=.04+rand()*.16;bg.fillStyle=i%3?PAPER:INK;bg.fillRect(rand()*WIDTH,rand()*HEIGHT,.4+rand()*2.4,.4+rand()*1.5);}
-  bg.globalAlpha=1;
-  // Registration cross and caption belong to the printed scene.
-  line(bg,[[28,39],[52,39]],PAPER,1);line(bg,[[40,27],[40,51]],PAPER,1);
+  twig(692,501,140,-1.8,3);
+  line(bg,[[8,509],[65,505],[125,510],[188,505],[254,508],[312,501],[376,508],[443,504],[534,507],[603,501],[681,506],[752,502]],INK,1.8);
+  for(let i=0;i<38;i++){const x=rand()*WIDTH,y=515+rand()*85;line(bg,[[x,y],[x+6+rand()*17,y-3-rand()*5]],'#79836966',.7);}
+  for(let i=0;i<21;i++){const x=rand()*WIDTH;line(bg,[[x,508],[x-5,489-rand()*13],[x+3,502]],'#69755a',.9);}
 }
 function drawBear(c,b) {
   const flipping=b.state==='flip', jump=flipping?Math.sin(b.flip*Math.PI)*116:0;
@@ -81,7 +74,7 @@ function draw() {
   if(!ctx)return;
   ctx.setTransform(pixelRatio,0,0,pixelRatio,0,0);ctx.clearRect(0,0,WIDTH,HEIGHT);ctx.drawImage(scenery,0,0);
   world.bears.slice().sort((a,b)=>a.scale-b.scale).forEach(b=>drawBear(ctx,b));
-  for(const l of world.letters) {ctx.save();ctx.translate(l.x,l.y);ctx.rotate(l.angle);ctx.font='bold 43px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=INK;ctx.fillText(l.char,2,2);ctx.fillStyle=PAPER;ctx.fillText(l.char,0,0);if(inspect){ctx.beginPath();ctx.arc(0,0,l.r,0,Math.PI*2);ctx.strokeStyle=RED;ctx.lineWidth=1.5;ctx.stroke();}ctx.restore();}
+  for(const l of world.letters) {ctx.save();ctx.translate(l.x,l.y);ctx.rotate(l.angle);ctx.font='bold 43px Georgia';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle=PAPER;ctx.fillText(l.char,1,1);ctx.fillStyle=INK;ctx.fillText(l.char,0,0);if(inspect){ctx.beginPath();ctx.arc(0,0,l.r,0,Math.PI*2);ctx.strokeStyle=RED;ctx.lineWidth=1.5;ctx.stroke();}ctx.restore();}
 }
 function resize() {pixelRatio=Math.min(2,Math.max(1,canvas.clientWidth/WIDTH*(devicePixelRatio||1)));canvas.width=Math.round(WIDTH*pixelRatio);canvas.height=Math.round(HEIGHT*pixelRatio);draw();}
 function announce(message){$('creature-status').textContent=message;}
@@ -90,7 +83,7 @@ function sync() {
   $('creature-pause').textContent=paused?'▶':'Ⅱ';$('creature-pause').setAttribute('aria-pressed',String(paused));$('creature-pause').setAttribute('aria-label',paused?'Play creature animation':'Pause creature animation');
   $('behavior').textContent=world.bears.map(b=>b.state).join(' / ');$('eaten').textContent=world.eaten;$('population').textContent=`${world.bears.length} / 4`;
 }
-function processEvents() {for(const event of world.drainEvents()){if(event.type==='eat'){restore(event.letter);announce(world.eaten%3===0&&world.bears.length<4?'Three letters. Watch for a cub.':`“${event.char}” eaten. A flip, on the house.`);}else if(event.type==='birth')announce('A cub! Now there are '+world.bears.length+' bears.');else restore(event.letter);}}
+function processEvents() {for(const event of world.drainEvents()){if(event.type==='eat'){restore(event.letter);announce(world.eaten%3===0&&world.bears.length<4?'Three letters eaten. A cub is forming.':`“${event.char}” eaten. The bear flips.`);}else if(event.type==='birth')announce('A cub! Now there are '+world.bears.length+' bears.');else restore(event.letter);}}
 function frame(now) {
   frameId=0;const elapsed=last?Math.min((now-last)/1000,.05):0;last=now;
   if(!paused&&visible&&!document.hidden){accumulator+=elapsed;let count=0;while(accumulator>=1/120&&count++<8){world.step(1/120);accumulator-=1/120;}processEvents();draw();if(now-uiAt>180){sync();uiAt=now;}}
@@ -102,13 +95,13 @@ function spawn(char,x,y,vx=0,vy=0,button=null){
   const l=world.spawnLetter(char,x,y,vx,vy);
   if(!l){announce('The habitat is full of letters. Let them eat a few first.');return;}
   if(button){button.setAttribute('aria-disabled','true');sourceLetters.set(l.id,button);}
-  announce(paused?'Letter added. Press Play to let the bear find it.':'Dinner is falling.');draw();schedule();
+  announce(paused?'Letter added. Press Play to let the bear find it.':'Letter released.');draw();schedule();
 }
 let feedIndex=0;
 $('feed').addEventListener('click',()=>{const alphabet='MATTIASREINHARDT',char=alphabet[feedIndex++%alphabet.length];spawn(char,310+world.random()*190,70,world.random()*60-30);});
 $('creature-pause').addEventListener('click',()=>{paused=!paused;sync();schedule();});
 $('inspect').addEventListener('click',()=>{inspect=!inspect;$('mechanics').hidden=!inspect;$('inspect').setAttribute('aria-pressed',String(inspect));sync();draw();});
-$('restart').addEventListener('click',()=>{for(const id of sourceLetters.keys())restore(id);world.reset();accumulator=0;sync();draw();announce('Fresh ink. One hungry bear.');schedule();});
+$('restart').addEventListener('click',()=>{for(const id of sourceLetters.keys())restore(id);world.reset();accumulator=0;sync();draw();announce('Simulation reset. One bear.');schedule();});
 // Pointer capture keeps a dragged heading letter attached outside the text bounds.
 let drag=null, suppressClickUntil=0;
 for(const button of document.querySelectorAll('.edible')) {
@@ -132,7 +125,7 @@ for(const button of document.querySelectorAll('.edible')) {
     const r=canvas.getBoundingClientRect(),inside=e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;
     if(inside)spawn(button.textContent,(e.clientX-r.left)/r.width*WIDTH,(e.clientY-r.top)/r.height*HEIGHT,d.vx,d.vy,button);
     else if(!d.moved)spawn(button.textContent,320+world.random()*180,70,0,0,button);
-    else announce('Drop the letter into the blue woodland.');
+    else announce('Drop the letter into the bear drawing.');
   });
   const cancel=()=>{if(drag?.button===button){drag.ghost.remove();drag=null;}};
   button.addEventListener('pointercancel',cancel);button.addEventListener('lostpointercapture',cancel);
@@ -142,6 +135,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&drag){drag.ghost.re
 new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;last=0;schedule();}).observe(canvas);
 document.addEventListener('visibilitychange',()=>{last=0;schedule();});
 reduce.addEventListener('change',e=>{if(e.matches){paused=true;sync();}});
+document.addEventListener('notebook-motion', e=>{paused=e.detail.paused;sync();schedule();});
 new ResizeObserver(resize).observe(canvas);
 if(ctx&&bg){buildScenery();resize();sync();schedule();if(paused)announce('Motion is paused. Add a letter, then press Play when ready.');}
 else {announce('Canvas is unavailable. Project pages and source links still work.');$('feed').disabled=true;}
