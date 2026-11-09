@@ -1,27 +1,17 @@
-# Mattias Reinhardt — Portfolio
+# Mattias Reinhardt — student portfolio
 
-A static portfolio built with HTML, CSS, SVG, Canvas, and modular JavaScript.
+Static HTML, CSS, and JavaScript. Live at https://mattiasreinhardt.com.
 
-## Website files
+## Hosting
 
-The deployable website is in `portfolio-static/dist/`. It has no build dependencies.
+The existing Cloudflare Worker `portfolio` deploys from this repository's `main` branch. Website assets live in `portfolio-static/dist/`. Preserve the existing Cloudflare build settings and domain bindings.
 
-## Deploy with Cloudflare Pages
+## Projects
 
-Connect this GitHub repository to a Cloudflare Pages project using:
+- `projects/newton_orbits.py`: Mattias's supplied Python/Tkinter/Matplotlib program, unchanged.
+- `physics.mjs`: browser adaptation with a fixed-step velocity-Verlet integrator. Normalized G, total mass, and starting separation are all 1. SI readouts use the preset's physical scales. This is explicitly distinguished from the original Python code on the site.
+- Elite Hypertrophy: description grounded in the app source and README; image from its prepared App Store screenshot fixtures. No personal workout data or invented usage metrics.
 
-| Setting | Value |
-| --- | --- |
-| Production branch | `main` |
-| Framework preset | None |
-| Root directory | Leave blank (repository root) |
-| Build command | `exit 0` |
-| Build output directory | `portfolio-static/dist` |
+Run locally: `python3 -m http.server 4173 --directory portfolio-static/dist`.
 
-Review the resulting `pages.dev` URL, then add `mattiasreinhardt.com` under the Pages project's Custom domains and follow the DNS validation instructions. Preserve unrelated DNS records, including email records.
-
-Future pushes to `main` will deploy automatically once Git integration is connected.
-
-## Content
-
-Project documentation is still in progress. Elite Hypertrophy, Alchemy Martial Arts, and Python coursework currently have introductory descriptions; add actual screenshots, source links, and case studies when available.
+The orbit animation honors reduced-motion preferences, pauses numerical work when offscreen, and bounds per-frame integration work. No recorded video or animated images are used.
