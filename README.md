@@ -36,7 +36,7 @@ Simulation timestep: 1/120 second, elapsed-time clamp 50 ms, capped work per ani
 
 The locally hosted Kalam font is distributed under the SIL Open Font License; see `portfolio-static/dist/assets/fonts/OFL.txt`. Special Elite is distributed under the Apache License 2.0. Playfair Display (the name) is under the SIL Open Font License. Architext (pencil lettering) is © Grant Marshall, supplied by Mattias; its licence terms are not in the font file and should be confirmed with the author.
 
-The visual direction uses Mattias's preferences for sketchbooks, printmaking, and visible nature. Copy is limited to verified education and project information. His artwork photographs are private design references and are NOT included. The bear and scenery are original programmatic drawings, not traced artwork. The website and browser adaptations were developed with AI assistance; the original Python project is supplied separately.
+The visual direction uses Mattias's preferences for sketchbooks, printmaking, and visible nature. Copy is limited to verified education and project information. The mark on the title card, in the page corner and in the tab icon is cut from Mattias's own bear print (`assets/bear*.webp`, `assets/favicon.png`), supplied by him for this use. His other artwork is not included. The interactive bear and the scenery are original programmatic drawings, not traced artwork. The website and browser adaptations were developed with AI assistance; the original Python project is supplied separately.
 
 ## Deploy
 

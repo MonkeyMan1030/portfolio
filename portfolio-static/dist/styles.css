@@ -218,3 +218,12 @@ h2,h3,.who,.contents li,.ticks,.list ul,.go,.chips span,.pointing,.mast nav a,.p
 .contact-print h2{font-size:42px}
 @media(max-width:1050px){.ticks{font-size:23px}.sk .scrap h3{font-size:38px}}
 @media(max-width:760px){.who{font-size:27px}.contents li{font-size:23px}.mast nav a{font-size:21px}.ticks{font-size:22px}.sk .scrap h3{font-size:34px}.hvdc h3{font-size:34px!important}.list ul{font-size:22px}.sk .work>h2,.list h2,.about-sheet h2{font-size:38px}.sk .cover{padding-top:14px}.lead{font-size:26px!important}.job h3{font-size:28px}}
+
+/* Mattias's own bear print as the mark: cut out of the print for the title card and the corner. */
+.monogram .bear{width:46px;height:auto}
+.monogram:hover .bear{transform:rotate(-4deg) scale(1.06)}.monogram .bear{transition:transform .2s}
+.s-bear{position:relative;display:block;width:min(250px,44vw)}
+.s-bear img{display:block;width:100%;height:auto}
+.s-bear .b-red{position:absolute;inset:0}
+#splash .b-blk{transform-box:border-box;position:relative}
+@media(max-width:760px){.monogram .bear{width:38px}}
