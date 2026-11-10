@@ -1,21 +1,23 @@
 import assert from 'node:assert/strict';
+import {leafBottom} from '../portfolio-static/dist/contact.js';
 import {LeafField} from '../portfolio-static/dist/leaves.mjs';
 const f=new LeafField(1);
 f.setLedges([{id:'M',x:50,y:100,width:40}]);
 const leaf=f.spawn(70,70,{vx:0,vy:50,r:6});
 for(let i=0;i<160;i++)f.step(1/120);
 assert.equal(leaf.ledge,'M','A falling leaf lands on the crossed letter top.');
-assert.ok(Math.abs(leaf.y-96.7)<.001);
+assert.ok(Math.abs(leaf.y+leafBottom(leaf.r,leaf.angle)-100)<.001);
 f.setLedges([{id:'M',x:60,y:120,width:40}]);f.step(1/120);
-assert.equal(leaf.x,60+leaf.offset);assert.equal(leaf.y,116.7,'Resting leaves follow their letter after reflow.');
-f.gust(150);f.step(1/120);assert.equal(leaf.ledge,null,'A strong scroll/pointer gust detaches a resting leaf.');
+assert.equal(leaf.x,60+leaf.offset);assert.ok(Math.abs(leaf.y+leafBottom(leaf.r,leaf.angle)-120)<.001,'Visible leaf bottom follows its surface.');
+f.gust(150);f.step(1/120);assert.equal(leaf.ledge,'M','Landed leaves persist until explicitly cleared.');
+f.setLedges([{id:'M',x:60,y:120,width:1}]);f.step(1/120);assert.equal(leaf.ledge,null,'A shrunken support releases unsupported leaves.');
 const removed=new LeafField(2);removed.setLedges([{id:4,x:10,y:100,width:100}]);
 const r=removed.spawn(40,80,{vy:45});for(let i=0;i<80;i++)removed.step(1/120);assert.equal(r.ledge,4);
 removed.setLedges([]);removed.step(1/120);assert.equal(r.ledge,null,'A letter fed to a bear is no longer a leaf ledge.');
 const fast=new LeafField(3);fast.setLedges([{id:1,x:0,y:100,width:200},{id:2,x:0,y:99,width:200}]);const t=fast.spawn(80,92,{vy:800,r:5});fast.step(.1);assert.equal(t.ledge,2,'Swept collision chooses the first crossed surface.');
-const capped=new LeafField();for(let i=0;i<200;i++)capped.spawn(100,100);assert.equal(capped.leaves.length,64);assert.equal(capped.spawn(NaN,0),null);
+const capped=new LeafField();for(let i=0;i<800;i++)capped.spawn(100,100);assert.equal(capped.leaves.length,600);assert.equal(capped.spawn(NaN,0),null);
 for(const dt of [0,-1,NaN,Infinity,.2])assert.throws(()=>capped.step(dt),RangeError);
 const a=new LeafField(77),b=new LeafField(77);for(const w of[a,b]){for(let i=0;i<12;i++)w.spawn(i*10,20);w.gust(34);for(let i=0;i<400;i++)w.step(1/120);}
 assert.deepEqual(a.leaves,b.leaves,'Seeded fixed steps are deterministic.');assert.ok(a.leaves.every(l=>[l.x,l.y,l.vx,l.vy,l.angle].every(Number.isFinite)));
 for(let i=0;i<4000;i++)a.step(1/120);assert.equal(a.leaves.length,0,'Particles expire rather than accumulating forever.');
-console.log('Leaf landing, reflow, wind release, removed ledges, swept collision, bounds, determinism, expiry: passed.');
+console.log('PASS: leaf contact, reflow, persistent landing, shrink release, removed supports, bounds and determinism');

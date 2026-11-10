@@ -47,7 +47,8 @@ if (canvas) {
   }
   function schedule() { if (!raf && !paused && visible && !document.hidden) raf = requestAnimationFrame(frame); }
   function stop() { if (raf) cancelAnimationFrame(raf); raf = 0; last = 0; }
-  canvas.closest('.graph')?.addEventListener('click', e => { e.preventDefault(); which = (which + 1) % presets.length; reset(); if (paused) draw(); });
+  const change=document.createElement('button');change.id='change-orbit';change.type='button';change.textContent='Change orbit example';canvas.closest('a').after(change);
+  change.addEventListener('click', e => { e.preventDefault(); which = (which + 1) % presets.length; reset(); if (paused) draw(); });
   document.addEventListener('notebook-motion', e => { paused = e.detail.paused; paused ? stop() : schedule(); });
   document.addEventListener('visibilitychange', () => { document.hidden ? stop() : schedule(); });
   new IntersectionObserver(([e]) => { visible = e.isIntersecting; visible ? schedule() : stop(); }).observe(canvas);

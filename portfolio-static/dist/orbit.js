@@ -7,12 +7,13 @@ const canvas=$('orbit-canvas'),ctx=canvas.getContext('2d');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
 let paused=reduced.matches,visible=true,bodies,initialEnergy,trails=[[],[]],prediction=[[],[]];
 let accumulator=0,last=0,steps=0,physicalMass=1.2e25,physicalDistance=3.84e8;
+let fitRadius=1; let raf=0;
 let yaw=-0.35,pitch=0.65,zoom=1,width=0,height=0,drag=null,renderedAt=0;
 const colors=['#7db6ff','#ffb888'];
 function syncPause(){ $('pause').textContent=paused?'Resume':'Pause';$('pause').setAttribute('aria-pressed',String(paused));$('sim-status').textContent=paused?'Paused':'Running'; }
 function reset(){
  const ratio=10**Number($('ratio').value), speed=Number($('velocity').value);
- bodies=createSystem(ratio,speed);initialEnergy=energy(bodies);trails=[[],[]];steps=0;accumulator=0;
+ fitRadius=Math.max(1, speed>1 ? speed*speed/(2-speed*speed) : 1); zoom=1; bodies=createSystem(ratio,speed);initialEnergy=energy(bodies);trails=[[],[]];steps=0;accumulator=0;
  $('ratio-out').textContent=`${ratio.toFixed(ratio<2?1:0).replace('.0','')} : 1`;
  $('velocity-out').textContent=`${speed.toFixed(3)}× circular`;
  // Faint guide is computed from the same differential equations on each reset.
@@ -21,7 +22,7 @@ function reset(){
  bodies.forEach((b,i)=>trails[i].push({x:b.x,y:b.y}));
  syncPause();readouts();draw();
 }
-function project(x,y,z=0){const xx=x*Math.cos(yaw)-y*Math.sin(yaw),yy=x*Math.sin(yaw)+y*Math.cos(yaw);const scale=Math.min(width/3.3,height/2.7)*zoom;return {x:width/2+xx*scale,y:height*.55+(yy*Math.cos(pitch)-z*Math.sin(pitch))*scale};}
+function project(x,y,z=0){const xx=x*Math.cos(yaw)-y*Math.sin(yaw),yy=x*Math.sin(yaw)+y*Math.cos(yaw);const scale=Math.min((width-70)/(2*fitRadius),(height-100)/(2*fitRadius))*zoom;return {x:width/2+xx*scale,y:height*.55+(yy*Math.cos(pitch)-z*Math.sin(pitch))*scale};}
 function line(a,b,color,thickness=1){ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.strokeStyle=color;ctx.lineWidth=thickness;ctx.stroke();}
 function path(points,color,alpha=1){if(points.length<2)return;ctx.beginPath();points.forEach((p,i)=>{const q=project(p.x,p.y);i?ctx.lineTo(q.x,q.y):ctx.moveTo(q.x,q.y)});ctx.strokeStyle=color;ctx.globalAlpha=alpha;ctx.lineWidth=1.5;ctx.stroke();ctx.globalAlpha=1;}
 function arrow(a,b,color){line(a,b,color,1.2);const angle=Math.atan2(b.y-a.y,b.x-a.x);for(const d of [-.45,.45])line(b,{x:b.x-7*Math.cos(angle+d),y:b.y-7*Math.sin(angle+d)},color,1.2);}
@@ -45,13 +46,14 @@ function draw(){
 }
 function readouts(){const distance=Math.hypot(bodies[1].x-bodies[0].x,bodies[1].y-bodies[0].y)*physicalDistance;const force=6.674e-11*bodies[0].m*bodies[1].m*physicalMass**2/distance**2;$('separation').textContent=`${distance.toExponential(2)} m`;$('force').textContent=`${force.toExponential(2)} N`;$('energy').textContent=`${(Math.abs((energy(bodies)-initialEnergy)/initialEnergy)*100).toFixed(4)}%`;}
 function resize(){const rect=canvas.getBoundingClientRect(),dpr=Math.min(devicePixelRatio||1,2);width=rect.width;height=rect.height;canvas.width=Math.round(width*dpr);canvas.height=Math.round(height*dpr);ctx?.setTransform(dpr,0,0,dpr,0,0);draw();}
-function frame(now){const elapsed=last?Math.min((now-last)/1000,.05):0;last=now;
+function schedule(){if(!raf&&!paused&&visible&&!document.hidden)raf=requestAnimationFrame(frame);}
+function frame(now){raf=0;const elapsed=last?Math.min((now-last)/1000,.05):0;last=now;
  if(visible&&!document.hidden){if(!paused){accumulator+=elapsed*Number($('rate').value)*.9;let count=0;try{while(accumulator>=.002&&count<100){step(bodies,.002);accumulator-=.002;steps++;count++;if(steps%3===0)bodies.forEach((b,i)=>{trails[i].push({x:b.x,y:b.y});if(trails[i].length>1600)trails[i].shift();});}}catch{paused=true;syncPause();$('sim-status').textContent='Numerical limit reached — reset to continue';}}
  draw();if(now-renderedAt>180){readouts();renderedAt=now;}}
- requestAnimationFrame(frame);
+ schedule();
 }
-$('pause').addEventListener('click',()=>{paused=!paused;syncPause();});
-document.addEventListener('notebook-motion',e=>{paused=e.detail.paused;syncPause();});
+$('pause').addEventListener('click',()=>{document.dispatchEvent(new CustomEvent('motion-request',{detail:{paused:!paused}}));});
+document.addEventListener('notebook-motion',e=>{paused=e.detail.paused;syncPause();last=0;if(paused&&raf){cancelAnimationFrame(raf);raf=0;}draw();schedule();});
 $('reset').addEventListener('click',()=>{reset();});
 for(const id of ['ratio','velocity'])$(id).addEventListener('input',()=>{reset();});
 $('rate').addEventListener('input',()=>{$('rate-out').textContent=`${$('rate').value}×`;});
@@ -63,6 +65,9 @@ canvas.addEventListener('pointermove',e=>{if(!drag)return;yaw+=(e.clientX-drag.x
 canvas.addEventListener('pointerup',()=>{drag=null});canvas.addEventListener('pointercancel',()=>{drag=null});
 canvas.addEventListener('wheel',e=>{e.preventDefault();zoom=Math.max(.4,Math.min(2.5,zoom*Math.exp(-e.deltaY*.001)));draw();},{passive:false});
 reduced.addEventListener('change',e=>{if(e.matches){paused=true;syncPause();}});
-new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;last=0;},{threshold:0}).observe(canvas);
+new IntersectionObserver(entries=>{visible=entries[0].isIntersecting;last=0;if(!visible&&raf){cancelAnimationFrame(raf);raf=0;}schedule();},{threshold:0}).observe(canvas);
 new ResizeObserver(resize).observe(canvas);
-if(ctx){reset();resize();requestAnimationFrame(frame);}else{$('sim-status').textContent='Canvas unavailable. Download the Python project instead.';}
+if(ctx){reset();resize();schedule();}else{$('sim-status').textContent='Canvas unavailable. Download the Python project instead.';}
+
+document.addEventListener('visibilitychange',()=>{last=0;if(document.hidden&&raf){cancelAnimationFrame(raf);raf=0;}else schedule();});
+for(const [id,factor] of [['zoom-in',1.2],['zoom-out',1/1.2],['reset-view',0]])document.getElementById(id).onclick=()=>{zoom=factor?Math.max(.2,Math.min(3,zoom*factor)):1;if(!factor){yaw=-.35;pitch=.65;}draw();};

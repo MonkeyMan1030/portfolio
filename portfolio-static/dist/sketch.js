@@ -29,7 +29,7 @@ document.querySelectorAll('.scrib').forEach((el, i) => {
 // Title card: remove it when its exit animation ends, or at once on a click or key press.
 const card = document.getElementById('splash');
 if (card) {
-  const done = () => { if (!card.isConnected) return; card.remove(); document.dispatchEvent(new CustomEvent('splash-done')); };
+  const done = () => { if (!card.isConnected) return; document.dispatchEvent(new CustomEvent('splash-done')); card.remove(); };
   if (getComputedStyle(card).display === 'none') done();
   else {
     card.addEventListener('animationend', e => { if (e.animationName === 'card-out') done(); });

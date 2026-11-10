@@ -1,11 +1,12 @@
+import {textSurfaces} from './contact.js';
 import { LeafField, seededRandom } from './leaves.mjs';
 const canvas=document.getElementById('page-sketch'),ctx=canvas?.getContext('2d');
 const book=document.querySelector('.notebook'),anchor=document.querySelector('.tree-anchor');
 const replay=document.getElementById('replay-drawing'),motion=document.getElementById('page-motion');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const field=new LeafField(231),colors=['#c5391f','#d39a2c','#8f2f1c','#5f7d45'];
+const field=new LeafField(231),colors=['#bd4e22','#dba832','#8f3826','#d77724'];
 let paused=reduced.matches,raf=0,last=0,acc=0,scrollY=window.scrollY,previousScroll=scrollY,lastScrollAt=0;
-let W=innerWidth,H=innerHeight,dpr=1,tree=null,branches=[],buds=[],surfaces=[],bookRect=null,geometryDirty=true;
+let W=innerWidth,H=innerHeight,dpr=1,tree=null,branches=[],buds=[],foliage=[],surfaces=[],bookRect=null,geometryDirty=true;
 let introStart=0,intro=false,seedBurst=false,spawnAt=0,frameCount=0,windVisual=0,pointer=null,hasStarted=false;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 function measure(){
@@ -17,37 +18,36 @@ function measure(){
   if(anchor){const r=anchor.getBoundingClientRect();tree={x:r.left,y:r.top+scrollY,w:r.width,h:r.height};buildTree();}
   geometryDirty=false;
 }
-function updateLedges(){
-  field.setLedges(surfaces.filter(s=>s.element.getAttribute('aria-disabled')!=='true').map(({element,id})=>{const r=element.getBoundingClientRect();return{id,x:r.left,y:r.top+scrollY+Math.min(9,r.height*.15),width:r.width};}).filter(s=>s.width>2));
-}
+function updateLedges(){field.setLedges(textSurfaces());}
+document.addEventListener('letter-layout',()=>{geometryDirty=true;if(paused){measure();render(performance.now());}else schedule();});
+if(anchor){anchor.removeAttribute('aria-hidden');const reset=document.createElement('button');reset.id='reset-leaves';reset.type='button';reset.textContent='reset leaves';anchor.append(reset);reset.onclick=()=>{for(const l of field.leaves){l.ledge=null;l.clearing=true;l.vx=(field.random()-.5)*80;}if(paused){field.leaves=[];render(performance.now());}else schedule();};}
 function buildTree(){
-  branches=[];buds=[];const random=seededRandom(823),w=tree.w,h=tree.h;
-  function grow(x,y,len,angle,width,depth,start){
-    const ex=x+Math.cos(angle)*len,ey=y+Math.sin(angle)*len;
-    branches.push({x,y,ex,ey,cx:(x+ex)/2+(random()-.5)*14,cy:(y+ey)/2+(random()-.5)*12,width,start,duration:.25+len/1700});
-    if(depth===0){for(let i=0;i<4;i++)buds.push({x:ex+(random()-.5)*28,y:ey+(random()-.5)*22,r:3.7+random()*4,angle:random()*6.28,color:Math.floor(random()*4),delay:start+.3+random()*.45});return;}
-    grow(ex,ey,len*(.66+random()*.07),angle-.38-random()*.35,width*.64,depth-1,start+.22);
-    grow(ex,ey,len*(.62+random()*.12),angle+.30+random()*.4,width*.63,depth-1,start+.24);
-  }
-  grow(w*.81,h*.94,h*.29,-1.75,3.2,4,.05);
-  grow(w*.77,h*.66,w*.30,-2.66,2.1,3,.4);
-  if(W>760){
-    const b={x:w*.75,y:h*.44,ex:-w*.85,ey:h*.19,cx:w*.05,cy:h*.07,width:1.3,start:.35,duration:.75};
-    branches.push(b);
-    for(const t of [.58,.75,.9,1]){
-      const x=(1-t)**2*b.x+2*(1-t)*t*b.cx+t*t*b.ex;
-      const y=(1-t)**2*b.y+2*(1-t)*t*b.cy+t*t*b.ey;
-      grow(x,y,15+t*7,t===1?-2:-1.5,.7,1,.8+t*.3);
-    }
-  }
+ branches=[];buds=[];const random=seededRandom(823),w=Math.min(tree.w*.94,450),h=tree.h,ox=(tree.w-w)*.6;
+ const branch=(x,y,cx,cy,ex,ey,width,endWidth,start)=>branches.push({x:ox+x*w,y:y*h,cx:ox+cx*w,cy:cy*h,ex:ox+ex*w,ey:ey*h,width,endWidth,start,duration:.6});
+ branch(.54,.94,.56,.70,.49,.43,17,7,.05);
+ branch(.53,.75,.39,.62,.22,.45,8,1.5,.35);
+ branch(.53,.69,.68,.57,.82,.46,7,1.5,.4);
+ branch(.51,.58,.38,.43,.29,.29,6,1,.45);
+ branch(.50,.53,.62,.40,.69,.25,5,1,.5);
+ branch(.49,.44,.46,.27,.49,.12,5,.8,.55);
+ branch(.42,.63,.28,.59,.13,.59,3,.6,.65);
+ branch(.66,.58,.75,.60,.89,.59,3,.6,.7);
+ const clusters=[[.48,.20,.16,.14],[.31,.31,.17,.16],[.66,.30,.17,.14],[.20,.46,.15,.13],[.79,.46,.15,.12],[.49,.43,.23,.20],[.32,.58,.17,.12],[.66,.58,.18,.12]];
+ // Overlapping irregular clumps follow the branch structure instead of a flat ellipse.
+ foliage=[];
+ clusters.forEach(([cx,cy,rx,ry],index)=>{const layer=document.createElement('canvas');layer.width=Math.ceil(tree.w*dpr);layer.height=Math.ceil(h*dpr);const paint=layer.getContext('2d');paint.scale(dpr,dpr);for(let i=0;i<210;i++){
+  const angle=random()*Math.PI*2,rad=Math.sqrt(random()),edge=1+.12*Math.sin(angle*5+index);
+  const bud={x:ox+(cx+Math.cos(angle)*rad*rx*edge)*w,y:(cy+Math.sin(angle)*rad*ry*edge)*h,r:4+random()*4.6,angle:random()*6.28,color:Math.floor(random()*4),delay:.65+index*.06+random()*.85};buds.push(bud);leafShape(bud.x,bud.y,bud.r,bud.angle,colors[bud.color],.82+(i%3)*.06,paint);
+ }foliage.push(layer);});
 }
-function leafShape(x,y,r,a,color,alpha=1){
+function leafShape(x,y,r,a,color,alpha=1,paint=ctx){
+  const ctx=paint;
   ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.globalAlpha*=alpha;ctx.beginPath();ctx.moveTo(-r,0);ctx.quadraticCurveTo(-r*.7,-r*.8,0,-r*.55);ctx.lineTo(r*.45,-r*.9);ctx.lineTo(r*.55,-r*.25);ctx.lineTo(r,0);ctx.quadraticCurveTo(r*.2,r, -r,0);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#695b3f';ctx.lineWidth=.45;ctx.stroke();ctx.beginPath();ctx.moveTo(-r*1.3,.3);ctx.lineTo(r*.68,0);ctx.moveTo(-r*.3,0);ctx.lineTo(r*.1,-r*.35);ctx.stroke();ctx.restore();
 }
 function drawTree(elapsed){
   if(!tree||tree.y+tree.h<scrollY-100)return;
   const drawTime=intro?elapsed:10;
-  ctx.save();ctx.beginPath();ctx.rect(bookRect.left,bookRect.top+68,bookRect.right-bookRect.left,bookRect.height);ctx.clip();ctx.translate(tree.x,tree.y);if(W<=760)ctx.globalAlpha=.28;
+  ctx.save();ctx.beginPath();ctx.rect(bookRect.left,bookRect.top+68,bookRect.right-bookRect.left,bookRect.height);ctx.clip();ctx.translate(tree.x,tree.y);
   const sway=windVisual*.025;
   function moved(x,y){return[x+sway*(1-y/tree.h)**2,y];}
   for(const b of branches){
@@ -56,11 +56,14 @@ function drawTree(elapsed){
     const p0=moved(b.x,b.y),p1=moved(b.cx,b.cy),p2=moved(b.ex,b.ey);
     const q=[p0[0]+(p1[0]-p0[0])*t,p0[1]+(p1[1]-p0[1])*t];
     const e=[(1-t)**2*p0[0]+2*(1-t)*t*p1[0]+t*t*p2[0],(1-t)**2*p0[1]+2*(1-t)*t*p1[1]+t*t*p2[1]];
-    ctx.beginPath();ctx.moveTo(...p0);ctx.quadraticCurveTo(...q,...e);ctx.strokeStyle='#23261f';ctx.lineWidth=b.width*1.25;ctx.lineCap='round';ctx.stroke();
+    // Short tapered pencil segments preserve a natural widening toward the roots.
+    ctx.strokeStyle='#35362d';ctx.lineCap='round';
+    for(let j=0;j<24;j++){const a=t*j/24,z=t*(j+1)/24;const at=u=>[(1-u)**2*p0[0]+2*(1-u)*u*p1[0]+u*u*p2[0],(1-u)**2*p0[1]+2*(1-u)*u*p1[1]+u*u*p2[1]];ctx.beginPath();ctx.moveTo(...at(a));ctx.lineTo(...at(z));ctx.lineWidth=b.width+(b.endWidth-b.width)*z;ctx.stroke();}
     ctx.beginPath();ctx.moveTo(p0[0]+2,p0[1]+.8);ctx.quadraticCurveTo(q[0]+1.8,q[1],e[0]+1,e[1]);ctx.strokeStyle='#7a76564d';ctx.lineWidth=.65;ctx.stroke();
     if(t<1){ctx.beginPath();ctx.arc(e[0],e[1],1.4,0,Math.PI*2);ctx.fillStyle='#535e48';ctx.fill();}
   }
-  buds.forEach((b,i)=>{const t=clamp((drawTime-b.delay)/.65,0,1);if(!t)return;const p=moved(b.x,b.y);leafShape(p[0],p[1],b.r*t,b.angle+Math.sin(field.time*.7+i)*.04,colors[b.color],.55+(i%3)*.13);});
+  if(intro)buds.forEach((b,i)=>{const t=clamp((drawTime-b.delay)/.65,0,1);if(!t)return;const sway=Math.sin(field.time*.6+Math.floor(i/210))*.7+windVisual*.008;leafShape(b.x+sway,b.y,b.r*t,b.angle,colors[b.color],.82+(i%210%3)*.06);});
+  else foliage.forEach((layer,i)=>ctx.drawImage(layer,Math.sin(field.time*.6+i)*.7+windVisual*.008,0,tree.w,tree.h));
   ctx.restore();
 }
 function drawMargins(elapsed){
@@ -84,7 +87,7 @@ function render(now){
   if(!ctx)return;const elapsed=(now-introStart)/1000;
   ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);ctx.save();ctx.translate(0,-scrollY);
   drawMargins(elapsed);drawTree(elapsed);drawUnderlines(elapsed);
-  for(const l of field.leaves){if(l.y<scrollY-25||l.y>scrollY+H+25)continue;const fade=Math.min(1,(30-l.age)/2);leafShape(l.x,l.y,l.r,l.angle,colors[l.color],fade*.86);}
+  for(const l of field.leaves){if(l.y<scrollY-25||l.y>scrollY+H+25)continue;const fade=1;leafShape(l.x,l.y,l.r,l.angle,colors[l.color],fade*.86);}
   ctx.restore();
 }
 function release(count=1){
@@ -96,10 +99,10 @@ function release(count=1){
     field.spawn(tree.x+b.x,tree.y+b.y,{vx:-35-field.random()*40,vy:8+field.random()*12,color:b.color,r:4+field.random()*3});
   }
 }
-function finishIntro(){intro=false;document.body.classList.remove('drawing-on');if(replay)replay.textContent='Replay drawing';geometryDirty=true;}
+function finishIntro(){intro=false;document.body.classList.remove('drawing-on','intro-pending');if(replay)replay.textContent='Replay drawing';}
 function startIntro(){
   if(!anchor||paused){finishIntro();render(performance.now());return;}
-  introStart=performance.now();intro=true;seedBurst=false;field.leaves=[];spawnAt=0;document.body.classList.remove('drawing-on');void book.offsetWidth;document.body.classList.add('drawing-on');replay.textContent='Skip drawing';geometryDirty=true;last=0;schedule();
+  introStart=performance.now();intro=true;seedBurst=false;field.leaves=[];spawnAt=0;document.body.classList.remove('drawing-on');void book.offsetWidth;document.body.classList.add('drawing-on');document.body.classList.remove('intro-pending');replay.textContent='Skip drawing';geometryDirty=true;last=0;schedule();
 }
 function frame(now){
   raf=0;scrollY=window.scrollY;
@@ -108,29 +111,30 @@ function frame(now){
   if(!paused){
     acc+=dt;let steps=0;while(acc>=1/120&&steps++<8){field.step(1/120);acc-=1/120;}
     windVisual+=(field.wind-windVisual)*Math.min(1,dt*3);
-    if(frameCount++%10===0)updateLedges();
+
     const elapsed=(now-introStart)/1000;
     if(intro&&elapsed>1.5&&!seedBurst){release(14);seedBurst=true;}
-    if(intro&&elapsed>3.1)finishIntro();
+    if(intro&&elapsed>3.5&&!book.getAnimations({subtree:true}).some(a=>a.playState==='running'))finishIntro();
     if(tree&&tree.y+tree.h>scrollY&&tree.y<scrollY+H&&now-spawnAt>1600&&(!intro||elapsed>1.6)){release();spawnAt=now;}
   }
   render(now);schedule();
 }
-function schedule(){if(ctx&&!raf&&!document.hidden&&!paused)raf=requestAnimationFrame(frame);}
-function setPaused(value){paused=value;motion?.setAttribute('aria-pressed',String(paused));if(motion)motion.textContent=paused?'Resume motion':'Pause motion';motion?.setAttribute('aria-label',paused?'Resume page animation':'Pause page animation');document.dispatchEvent(new CustomEvent('notebook-motion',{detail:{paused}}));if(paused){finishIntro();if(raf)cancelAnimationFrame(raf);raf=0;render(performance.now());}else{last=0;schedule();}}
+function schedule(){if(ctx&&!raf&&!document.hidden&&!paused&&(intro||(tree&&tree.y+tree.h>scrollY&&tree.y<scrollY+H)||field.leaves.some(l=>l.ledge===null)))raf=requestAnimationFrame(frame);}
+function setPaused(value){paused=value;document.body.classList.toggle("motion-paused",value);motion?.setAttribute('aria-pressed',String(paused));if(motion)motion.textContent=paused?'Resume motion':'Pause motion';motion?.setAttribute('aria-label',paused?'Resume page animation':'Pause page animation');document.dispatchEvent(new CustomEvent('notebook-motion',{detail:{paused}}));if(paused){finishIntro();if(raf)cancelAnimationFrame(raf);raf=0;render(performance.now());}else{last=0;schedule();}}
 replay?.addEventListener('click',()=>{if(intro)finishIntro();else{if(paused)setPaused(false);startIntro();}});
 motion?.addEventListener('click',()=>setPaused(!paused));
-window.addEventListener('scroll',()=>{const now=performance.now(),y=window.scrollY,delta=y-previousScroll,dt=Math.max(16,now-lastScrollAt);field.gust(clamp(delta/dt*10,-30,30));previousScroll=y;lastScrollAt=now;scrollY=y;if(paused)render(now);},{passive:true});
+document.addEventListener('motion-request',e=>setPaused(e.detail.paused));
+window.addEventListener('scroll',()=>{const now=performance.now(),y=window.scrollY,delta=y-previousScroll,dt=Math.max(16,now-lastScrollAt);field.gust(clamp(delta/dt*10,-30,30));previousScroll=y;lastScrollAt=now;scrollY=y;render(now);schedule();},{passive:true});
 window.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||paused)return;const now=performance.now();if(pointer){const dt=Math.max(16,now-pointer.time);const vx=(e.clientX-pointer.x)/dt*1000,vy=(e.clientY-pointer.y)/dt*1000;field.disturb(e.clientX,e.clientY+scrollY,vx,vy);if(Math.abs(vx)>100)field.gust(clamp(vx*.003,-3,3));}pointer={x:e.clientX,y:e.clientY,time:now};},{passive:true});
 window.addEventListener('resize',()=>{geometryDirty=true;if(paused){measure();render(performance.now());}});
-new ResizeObserver(()=>{geometryDirty=true;}).observe(book);
+new ResizeObserver(()=>{geometryDirty=true;if(paused){measure();render(performance.now());}else schedule();}).observe(book);
 document.addEventListener('visibilitychange',()=>{last=0;if(document.hidden&&raf){cancelAnimationFrame(raf);raf=0;}else schedule();});
 reduced.addEventListener('change',e=>{if(e.matches)setPaused(true);});
 if(!anchor&&replay)replay.hidden=true;
 if(ctx){
   measure();setPaused(paused);
   // Wait for the local handwriting font, but never leave content waiting on it.
-  const ready=document.fonts?Promise.race([document.fonts.ready,new Promise(resolve=>setTimeout(resolve,500))]):Promise.resolve();
+  const ready=document.fonts?document.fonts.ready:Promise.resolve();
   const begin=()=>{if(hasStarted)return;hasStarted=true;measure();if(anchor&&!paused)startIntro();else render(performance.now());schedule();};
   // The title card plays first; the page drawing starts when it lifts.
   const card=document.getElementById('splash');
