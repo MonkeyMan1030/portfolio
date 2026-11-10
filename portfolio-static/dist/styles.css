@@ -230,7 +230,7 @@ h2,h3,.who,.contents li,.ticks,.list ul,.go,.chips span,.pointing,.mast nav a,.p
 
 /* ------------------------------------------------------------------
    Print pass, after the bear print: its blue and red, rolled-ink edges,
-   pencil edition lines under each piece, and screenshots pulled as prints.
+   and pencil edition lines under each piece.
    ------------------------------------------------------------------ */
 :root{--red:#c0281c;--print-blue:#1179cc}
 .sk .habitat{background:none;margin-bottom:0}
@@ -240,14 +240,4 @@ h2,h3,.who,.contents li,.ticks,.list ul,.go,.chips span,.pointing,.mast nav a,.p
 .edition{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font:21px/1 var(--hand);color:var(--pencil);-webkit-text-stroke:.3px currentColor;margin:9px 6px 22px;transform:rotate(-.5deg)}
 .page-r .edition{transform:rotate(1deg);margin-top:12px}
 .edition span:nth-child(2){flex:1;text-align:center}
-.shot{isolation:isolate}
-.print-stack{position:absolute;inset:3px;border-radius:17px;overflow:hidden;background:var(--paper);opacity:0;transition:opacity .9s}
-.print-stack.pulled{opacity:1}
-.print-stack.real{opacity:0}
-.elite:hover .print-stack.real,.elite:focus-visible .print-stack.real{opacity:1;transition-duration:.25s}
-.pass{position:absolute;inset:0;width:100%;height:100%}
-.pass-red{translate:-2px 1.5px}.pass-black{translate:1.5px -1px}
-.pulled .pass{animation:stamp .42s cubic-bezier(.3,1.5,.5,1) backwards}
-.pulled .pass-red{animation-delay:.6s}.pulled .pass-black{animation-delay:1.2s}
-@keyframes stamp{from{opacity:0;scale:1.12}to{opacity:1;scale:1}}
 @media(max-width:760px){.edition{font-size:18px;margin-bottom:18px}}
