@@ -25,3 +25,15 @@ document.querySelectorAll('.scrib').forEach((el, i) => {
   svg.append(path); el.append(svg);
   if (still) el.classList.add('seen'); else seen.observe(el);
 });
+
+// Title card: remove it when its exit animation ends, or at once on a click or key press.
+const card = document.getElementById('splash');
+if (card) {
+  const done = () => { if (!card.isConnected) return; card.remove(); document.dispatchEvent(new CustomEvent('splash-done')); };
+  if (getComputedStyle(card).display === 'none') done();
+  else {
+    card.addEventListener('animationend', e => { if (e.animationName === 'card-out') done(); });
+    card.addEventListener('pointerdown', done);
+    addEventListener('keydown', done, { once: true });
+  }
+}

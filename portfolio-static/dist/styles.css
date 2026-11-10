@@ -23,7 +23,6 @@ a{color:inherit;text-underline-offset:4px;text-decoration-thickness:1px}a:hover{
    Sketchbook pass. Heavier ink, print colours, wobbly hand-drawn boxes,
    typewriter body text, and a packed two-page spread on the home page.
    ------------------------------------------------------------------ */
-@font-face{font-family:Kalam;src:url('/assets/fonts/Kalam-Bold.woff2') format('woff2');font-weight:700;font-display:swap}
 @font-face{font-family:'Special Elite';src:url('/assets/fonts/SpecialElite-Regular.woff2') format('woff2');font-weight:400;font-display:swap}
 :root{--paper:#f1ead6;--ink:#1d201b;--pencil:#4a4d44;--red:#c5391f;--blue:#1f4f9e;--yellow:#f2cf4a;--mono:'Special Elite','Courier New',monospace;--type:'Special Elite','Courier New',monospace}
 .defs{position:absolute}
@@ -165,3 +164,57 @@ footer>span{font:700 26px var(--hand)}
 
 @media(max-width:1050px){.spread,.about-sheet{gap:0 28px}.sk .cover h1{font-size:70px}.elite{grid-template-columns:130px 1fr}.orbit{grid-template-columns:1fr}.graph{min-height:210px}.ticks{font-size:19px}.lists{grid-template-columns:1fr;gap:6px}.wave{width:92px}.hvdc .no{padding-right:100px}.hvdc h3{margin-right:86px}.contents{grid-template-columns:1fr}}
 @media(max-width:760px){body{font-size:15px}.notebook{padding:0 14px 0 32px}.spread,.about-sheet{grid-template-columns:minmax(0,1fr)}.sk .cover h1{font-size:clamp(50px,16.5vw,70px);display:block;line-height:.88}.who{font-size:21px}.contents li{font-size:19px}.mast{min-height:0;padding:6px 0}.mast nav{gap:4px 14px}.mast nav a{font-size:17px}.mast button{font-size:11px;margin:0!important}.elite{grid-template-columns:112px 1fr;gap:12px;padding:12px}.sk .scrap h3{font-size:30px}.ticks{font-size:18px}.ticks.two{columns:1}.orbit{grid-template-columns:1fr}.sk .tree-anchor{position:absolute;top:0;right:-8px;width:185px;height:190px}.sk .habitat{margin:18px 0 22px;grid-row:auto}.pasted{font-size:11px}.graph{min-height:200px;transform:none}.sk .habitat-controls button{font-size:12px}.sk .creature-status{font-size:12px;min-height:0}.lists{grid-template-columns:1fr 1fr;gap:14px}.list ul{font-size:18px}.sk .work>h2,.list h2{font-size:32px}.page-title h1 br{display:none}.job{grid-template-columns:1fr}.job .when{padding:0}footer{font-size:12px}}
+
+/* ------------------------------------------------------------------
+   Pencil pass: Architext pencil lettering, a serif for the name, dark grey
+   ink, real paper texture, no centre fold, and an opening title card.
+   ------------------------------------------------------------------ */
+@font-face{font-family:Architext;src:url('/assets/fonts/Architext-Regular.woff2') format('woff2');font-weight:400 700;font-display:swap}
+@font-face{font-family:'Playfair Display';src:url('/assets/fonts/PlayfairDisplay-SemiBold.woff2') format('woff2');font-weight:400 700;font-display:swap}
+:root{--ink:#32332f;--pencil:#5a5b54;--hand:Architext,Kalam,'Bradley Hand',cursive;--name:'Playfair Display',Georgia,'Times New Roman',serif;--paper-tex:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='320' height='320'%3E%3Cfilter id='p' x='0' y='0' width='100%25' height='100%25'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.04' numOctaves='5' seed='8' stitchTiles='stitch'/%3E%3CfeDiffuseLighting lighting-color='%23f4eddb' surfaceScale='.75'%3E%3CfeDistantLight azimuth='50' elevation='64'/%3E%3C/feDiffuseLighting%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23p%29'/%3E%3C/svg%3E");--fibre:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='260' height='260'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9 .035' numOctaves='2' seed='5' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .35 0 0 0 0 .3 0 0 0 0 .2 0 0 0 .5 -.18'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url%28%23f%29'/%3E%3C/svg%3E")}
+.notebook{background:repeating-linear-gradient(0deg,transparent 0,transparent 27px,#1f4f9e26 27px,#1f4f9e26 28px),var(--fibre),linear-gradient(90deg,#00000012 0,transparent 30px,transparent calc(100% - 26px),#0000000f),var(--paper-tex) #f1ead6}
+.sk .cover h1,.about-sheet h1,.page-title h1{font-family:var(--name);font-weight:600;filter:none;letter-spacing:-.01em}
+.sk .cover h1{font-size:clamp(54px,5.5vw,84px);line-height:1.02;gap:0 .26em;margin-bottom:16px}
+.sk .cover h1 .edible{line-height:1.1}
+.page-title h1 em{font-style:italic}
+.monogram{transform:none;margin-right:4px;display:flex;align-items:center}
+.monogram .bear{width:54px;height:auto;display:block}
+.monogram:hover .b-red{transform:translate(-3px,2px)}.b-red{transition:transform .2s}
+.drag-letter{font-family:var(--name);font-weight:600}
+#splash{position:fixed;inset:0;z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;cursor:pointer;background:var(--fibre),var(--paper-tex) #f1ead6;animation:card-out .6s 2.7s cubic-bezier(.6,0,.8,.3) forwards}
+#splash .bear{width:min(230px,46vw);height:auto;overflow:visible}
+#splash .b-red{animation:print-red .55s .15s cubic-bezier(.2,.8,.3,1) backwards}
+#splash .b-blk{animation:print-blk .32s .62s cubic-bezier(.3,1.5,.5,1) backwards;transform-origin:center;transform-box:fill-box}
+#splash .b-det{animation:fade-in .25s .95s backwards}
+.s-name{font:600 clamp(34px,6vw,68px)/1.1 var(--name);color:var(--ink);margin:18px 0 0;letter-spacing:.01em;white-space:nowrap}
+.s-name span{display:inline-block;animation:rise .5s calc(1.05s + var(--i)*.04s) cubic-bezier(.2,.8,.3,1) backwards}.s-name .sp{width:.28em}
+.s-rule{display:block;width:min(430px,70vw);height:2px;background:var(--red);margin:12px 0 10px;transform-origin:left;animation:rule .5s 1.75s ease-out backwards}
+.s-sub{font:clamp(15px,2vw,21px) var(--hand);letter-spacing:.3em;text-transform:uppercase;color:var(--pencil);margin:0;animation:fade-in .5s 2s backwards}
+@keyframes print-red{from{opacity:0;transform:translate(-26px,16px)}60%{opacity:1}to{transform:none}}
+@keyframes print-blk{from{opacity:0;transform:scale(1.25)}to{opacity:1;transform:none}}
+@keyframes fade-in{from{opacity:0}}
+@keyframes rise{from{opacity:0;transform:translateY(.45em)}}
+@keyframes rule{from{transform:scaleX(0)}}
+@keyframes card-out{to{opacity:0;transform:scale(1.04);visibility:hidden}}
+@media(prefers-reduced-motion:reduce){#splash{display:none}}
+@media(max-width:760px){.sk .cover h1{font-size:clamp(44px,13.5vw,60px);line-height:1.02}.monogram .bear{width:44px}}
+
+/* Architext is a thin pencil line: size it up and give it a hair of extra weight so it reads. */
+h2,h3,.who,.contents li,.ticks,.list ul,.go,.chips span,.pointing,.mast nav a,.print-caption,.live,.next-project,.back,footer>span,.lead,.s-sub,.chapter-number{-webkit-text-stroke:.45px currentColor;letter-spacing:.01em}
+.mast nav a{font-size:23px}.mast{min-height:58px}
+.who{font-size:33px;line-height:1.1}
+.contents li{font-size:26px}.contents span{font-size:13px;margin-top:0;-webkit-text-stroke:0}
+.sk .cover{padding-top:34px}
+.sk .work>h2,.list h2,.about-sheet h2{font-size:46px}
+.sk .scrap h3{font-size:44px}.hvdc h3{font-size:40px!important}
+.ticks{font-size:26px;line-height:1.25}.ticks.two{font-size:24px}.about-sheet .ticks{font-size:25px}
+.list ul{font-size:25px}.about-sheet .list ul{font-size:26px}.list li span{-webkit-text-stroke:0}
+.go{font-size:24px}.chips span{font-size:19px;padding:2px 12px 0}.pointing{font-size:24px}
+.sk .print-caption{font-size:30px}.sk .print-caption a{-webkit-text-stroke:0}
+.eq{font:italic 600 21px var(--name)}.live{font-size:19px}
+.job h3{font-size:32px}.lead{font-size:30px!important}
+.chapter h2,.demo-heading h2{font-size:42px}.chapter-number{font-size:30px}
+.back{font-size:22px}.next-project{font-size:34px}footer>span{font-size:32px}
+.contact-print h2{font-size:42px}
+@media(max-width:1050px){.ticks{font-size:23px}.sk .scrap h3{font-size:38px}}
+@media(max-width:760px){.who{font-size:27px}.contents li{font-size:23px}.mast nav a{font-size:21px}.ticks{font-size:22px}.sk .scrap h3{font-size:34px}.hvdc h3{font-size:34px!important}.list ul{font-size:22px}.sk .work>h2,.list h2,.about-sheet h2{font-size:38px}.sk .cover{padding-top:14px}.lead{font-size:26px!important}.job h3{font-size:28px}}

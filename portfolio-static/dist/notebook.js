@@ -78,7 +78,7 @@ function drawMargins(elapsed){
 function drawUnderlines(elapsed){
   const e=document.getElementById('name');if(!e)return;
   const names=e.querySelectorAll('.name-line');
-  names.forEach((line,i)=>{const r=line.getBoundingClientRect(),y=r.bottom+scrollY-9;const t=intro?clamp((elapsed-1.2-i*.35)/.65,0,1):1;ctx.beginPath();ctx.moveTo(r.left+4,y);const end=r.left+(r.width-7)*t;ctx.quadraticCurveTo(r.left+r.width*.5,y+4,end,y+1);ctx.strokeStyle='#c5391fd9';ctx.lineWidth=2.4;ctx.lineCap='round';ctx.stroke();if(intro&&t>0&&t<1){ctx.beginPath();ctx.moveTo(end,y);ctx.lineTo(end+16,y-29);ctx.strokeStyle='#626a56';ctx.lineWidth=3;ctx.stroke();}});
+  names.forEach((line,i)=>{const r=line.getBoundingClientRect(),y=r.bottom+scrollY+3;const t=intro?clamp((elapsed-1.2-i*.35)/.65,0,1):1;ctx.beginPath();ctx.moveTo(r.left+4,y);const end=r.left+(r.width-7)*t;ctx.quadraticCurveTo(r.left+r.width*.5,y+4,end,y+1);ctx.strokeStyle='#c5391fd9';ctx.lineWidth=2.4;ctx.lineCap='round';ctx.stroke();if(intro&&t>0&&t<1){ctx.beginPath();ctx.moveTo(end,y);ctx.lineTo(end+16,y-29);ctx.strokeStyle='#626a56';ctx.lineWidth=3;ctx.stroke();}});
 }
 function render(now){
   if(!ctx)return;const elapsed=(now-introStart)/1000;
@@ -131,5 +131,8 @@ if(ctx){
   measure();setPaused(paused);
   // Wait for the local handwriting font, but never leave content waiting on it.
   const ready=document.fonts?Promise.race([document.fonts.ready,new Promise(resolve=>setTimeout(resolve,500))]):Promise.resolve();
-  ready.then(()=>{if(hasStarted)return;hasStarted=true;measure();if(anchor&&!paused)startIntro();else render(performance.now());schedule();});
+  const begin=()=>{if(hasStarted)return;hasStarted=true;measure();if(anchor&&!paused)startIntro();else render(performance.now());schedule();};
+  // The title card plays first; the page drawing starts when it lifts.
+  const card=document.getElementById('splash');
+  ready.then(()=>{if(card&&card.isConnected&&!paused&&getComputedStyle(card).display!=='none'){document.addEventListener('splash-done',begin,{once:true});setTimeout(begin,4500);}else begin();});
 }else {if(replay)replay.hidden=true;if(motion)motion.hidden=true;}
