@@ -3,7 +3,7 @@ const canvas=document.getElementById('page-sketch'),ctx=canvas?.getContext('2d')
 const book=document.querySelector('.notebook'),anchor=document.querySelector('.tree-anchor');
 const replay=document.getElementById('replay-drawing'),motion=document.getElementById('page-motion');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
-const field=new LeafField(231),colors=['#a65b34','#b0893d','#8b4534','#77815a'];
+const field=new LeafField(231),colors=['#c5391f','#d39a2c','#8f2f1c','#5f7d45'];
 let paused=reduced.matches,raf=0,last=0,acc=0,scrollY=window.scrollY,previousScroll=scrollY,lastScrollAt=0;
 let W=innerWidth,H=innerHeight,dpr=1,tree=null,branches=[],buds=[],surfaces=[],bookRect=null,geometryDirty=true;
 let introStart=0,intro=false,seedBurst=false,spawnAt=0,frameCount=0,windVisual=0,pointer=null,hasStarted=false;
@@ -56,7 +56,7 @@ function drawTree(elapsed){
     const p0=moved(b.x,b.y),p1=moved(b.cx,b.cy),p2=moved(b.ex,b.ey);
     const q=[p0[0]+(p1[0]-p0[0])*t,p0[1]+(p1[1]-p0[1])*t];
     const e=[(1-t)**2*p0[0]+2*(1-t)*t*p1[0]+t*t*p2[0],(1-t)**2*p0[1]+2*(1-t)*t*p1[1]+t*t*p2[1]];
-    ctx.beginPath();ctx.moveTo(...p0);ctx.quadraticCurveTo(...q,...e);ctx.strokeStyle='#535e48';ctx.lineWidth=b.width;ctx.lineCap='round';ctx.stroke();
+    ctx.beginPath();ctx.moveTo(...p0);ctx.quadraticCurveTo(...q,...e);ctx.strokeStyle='#23261f';ctx.lineWidth=b.width*1.25;ctx.lineCap='round';ctx.stroke();
     ctx.beginPath();ctx.moveTo(p0[0]+2,p0[1]+.8);ctx.quadraticCurveTo(q[0]+1.8,q[1],e[0]+1,e[1]);ctx.strokeStyle='#7a76564d';ctx.lineWidth=.65;ctx.stroke();
     if(t<1){ctx.beginPath();ctx.arc(e[0],e[1],1.4,0,Math.PI*2);ctx.fillStyle='#535e48';ctx.fill();}
   }
@@ -71,14 +71,14 @@ function drawMargins(elapsed){
     const end=begin+(maxY-begin)*reveal;
     ctx.beginPath();let started=false;
     for(let y=Math.max(begin,scrollY-30);y<end;y+=4){const xx=x+Math.sin(y*.016)*5+Math.sin(y*.035)*2+Math.sin(field.time*.4+y*.02)*Math.min(1.3,Math.abs(windVisual)*.015);if(!started){ctx.moveTo(xx,y);started=true;}else ctx.lineTo(xx,y);}
-    ctx.strokeStyle='#78866766';ctx.lineWidth=.9;ctx.stroke();
-    for(let y=begin+30;y<end;y+=66){if(y<scrollY-30||y>scrollY+H+20)continue;const xx=x+Math.sin(y*.016)*5,side=(Math.floor(y/66)%2?1:-1)*sign;ctx.beginPath();ctx.moveTo(xx,y);ctx.quadraticCurveTo(xx+side*16,y-18,xx+side*9,y-24);ctx.quadraticCurveTo(xx+side*1,y-19,xx,y);ctx.strokeStyle='#6b7a5c80';ctx.stroke();}
+    ctx.strokeStyle='#3f5a34d9';ctx.lineWidth=1.7;ctx.lineCap='round';ctx.stroke();
+    for(let y=begin+30;y<end;y+=66){if(y<scrollY-30||y>scrollY+H+20)continue;const xx=x+Math.sin(y*.016)*5,side=(Math.floor(y/66)%2?1:-1)*sign;ctx.beginPath();ctx.moveTo(xx,y);ctx.quadraticCurveTo(xx+side*16,y-18,xx+side*9,y-24);ctx.quadraticCurveTo(xx+side*1,y-19,xx,y);ctx.fillStyle=Math.floor(y/66)%3?'#5f7d45b3':'#b0612fb3';ctx.fill();ctx.strokeStyle='#33482bd9';ctx.lineWidth=1.1;ctx.stroke();}
   }
 }
 function drawUnderlines(elapsed){
   const e=document.getElementById('name');if(!e)return;
   const names=e.querySelectorAll('.name-line');
-  names.forEach((line,i)=>{const r=line.getBoundingClientRect(),y=r.bottom+scrollY-9;const t=intro?clamp((elapsed-1.2-i*.35)/.65,0,1):1;ctx.beginPath();ctx.moveTo(r.left+4,y);const end=r.left+(r.width-7)*t;ctx.quadraticCurveTo(r.left+r.width*.5,y+4,end,y+1);ctx.strokeStyle='#95624699';ctx.lineWidth=1.05;ctx.stroke();if(intro&&t>0&&t<1){ctx.beginPath();ctx.moveTo(end,y);ctx.lineTo(end+16,y-29);ctx.strokeStyle='#626a56';ctx.lineWidth=3;ctx.stroke();}});
+  names.forEach((line,i)=>{const r=line.getBoundingClientRect(),y=r.bottom+scrollY-9;const t=intro?clamp((elapsed-1.2-i*.35)/.65,0,1):1;ctx.beginPath();ctx.moveTo(r.left+4,y);const end=r.left+(r.width-7)*t;ctx.quadraticCurveTo(r.left+r.width*.5,y+4,end,y+1);ctx.strokeStyle='#c5391fd9';ctx.lineWidth=2.4;ctx.lineCap='round';ctx.stroke();if(intro&&t>0&&t<1){ctx.beginPath();ctx.moveTo(end,y);ctx.lineTo(end+16,y-29);ctx.strokeStyle='#626a56';ctx.lineWidth=3;ctx.stroke();}});
 }
 function render(now){
   if(!ctx)return;const elapsed=(now-introStart)/1000;

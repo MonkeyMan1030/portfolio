@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const canvas = $('creature-canvas'), ctx = canvas.getContext('2d');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 const world = new Habitat();
-const INK = '#3d4538', PAPER = '#eeeadd', RED = '#986447', BLUE = '#dfe3d1';
+const INK = '#1d201b', PAPER = '#f1ead6', RED = '#c5391f', BLUE = '#dfe3d1';
 let paused = reduce.matches, inspect = false, visible = true, frameId = 0, last = 0, accumulator = 0, pixelRatio = 1, uiAt = 0;
 const sourceLetters = new Map();
 const scenery = document.createElement('canvas'); scenery.width = WIDTH; scenery.height = HEIGHT;
