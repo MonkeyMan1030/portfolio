@@ -24,6 +24,7 @@ Open http://localhost:4173. No package installation or build step is needed.
 - `site.js` / `notebook.js`: progressive branch drawing on every homepage load; Skip/Replay, scroll-grown margin vines, pointer/scroll wind, and motion controls.
 - `leaves.mjs`: seeded, fixed-step leaf simulation; swept contacts against measured letter/heading ledges, attachment/reflow, wind release, and a 64-leaf cap.
 - `sketch.js`: seeded, generated pencil underlines that draw themselves when a heading scrolls into view.
+- `print.js`: splits the app screenshot into three flat ink layers (blue, red, black) from its own tonal range and stamps them down off-register, then fades to the real screenshot; hovering the card shows the print again.
 - `orbit-mini.js`: the live two-body drawing on the home page card; uses `physics.mjs`.
 - `physics.mjs` / `orbit.js`: two-body velocity-Verlet model and visualization.
 - `projects/newton_orbits.py`: Mattias's original supplied Python program, byte-for-byte unchanged.

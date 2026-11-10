@@ -3,7 +3,7 @@ const $ = id => document.getElementById(id);
 const canvas = $('creature-canvas'), ctx = canvas.getContext('2d');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
 const world = new Habitat();
-const INK = '#1d201b', PAPER = '#f1ead6', RED = '#c5391f', BLUE = '#dfe3d1';
+const INK = '#1d201b', PAPER = '#f1ead6', RED = '#c0281c', BLUE = '#dfe3d1';
 let paused = reduce.matches, inspect = false, visible = true, frameId = 0, last = 0, accumulator = 0, pixelRatio = 1, uiAt = 0;
 const sourceLetters = new Map();
 const scenery = document.createElement('canvas'); scenery.width = WIDTH; scenery.height = HEIGHT;
@@ -26,42 +26,54 @@ function buildScenery() {
   for(let i=0;i<38;i++){const x=rand()*WIDTH,y=515+rand()*85;line(bg,[[x,y],[x+6+rand()*17,y-3-rand()*5]],'#79836966',.7);}
   for(let i=0;i<21;i++){const x=rand()*WIDTH;line(bg,[[x,508],[x-5,489-rand()*13],[x+3,502]],'#69755a',.9);}
 }
+function blob(c, pts, fill) {
+  // Closed shape with rounded corners: each point is a control point between edge midpoints, like a gouge cut.
+  const n = pts.length, mid = i => [(pts[i % n][0] + pts[(i + 1) % n][0]) / 2, (pts[i % n][1] + pts[(i + 1) % n][1]) / 2];
+  c.beginPath(); c.moveTo(...mid(0));
+  for (let i = 1; i <= n; i++) c.quadraticCurveTo(pts[i % n][0], pts[i % n][1], ...mid(i));
+  c.closePath(); c.fillStyle = fill; c.fill();
+}
+const DARK = '#141112', PLUM = '#33272d', FAR = '#2a2026';
 function drawBear(c,b) {
+  // Drawn after Mattias's bear print: round ears, a head turned to face you, a red blaze down the muzzle,
+  // and a red pass that sits a little off-register under the black.
   const flipping=b.state==='flip', jump=flipping?Math.sin(b.flip*Math.PI)*116:0;
   const eating=b.state==='eat', bob=b.state==='seek'?Math.abs(Math.sin(b.gait))*3:Math.sin(world.time*1.6+b.id)*1.2;
   c.save();c.translate(b.x,GROUND-jump);c.scale(b.scale,b.scale);
   if(flipping){c.translate(0,-70);c.rotate(b.flip*Math.PI*2*b.facing);c.translate(0,70);}
   c.scale(b.facing,1);c.translate(0,-bob);
-  // Back feet and the offset red printing pass.
-  for(const [x,phase] of [[-58,0],[48,Math.PI]]) {
+  // Far-side legs.
+  for(const [x,phase] of [[-56,0],[44,Math.PI]]) {
     const move=b.state==='seek'?Math.sin(b.gait+phase)*12:0;
-    polygon(c,[[x-19,-60],[x+15,-56],[x+12+move,-6],[x+27+move,0],[x-15+move,0]],'#2a2d27');
+    blob(c,[[x-18,-64],[x+17,-62],[x+15+move,-8],[x+25+move,1],[x-17+move,1]],FAR);
   }
-  c.save();c.translate(4,2);
-  const torso=[[-99,-73],[-94,-111],[-72,-137],[-38,-152],[2,-151],[30,-140],[56,-126],[72,-94],[61,-52],[18,-38],[-50,-43],[-84,-55]];
-  polygon(c,torso,RED);c.restore();polygon(c,torso,INK);
-  // Forelegs are pivoted from the shoulder so movement stays attached.
-  for(const [x,phase] of [[-67,Math.PI],[40,0]]) {
+  const torso=[[-102,-66],[-100,-112],[-76,-142],[-36,-152],[8,-148],[44,-132],[64,-100],[60,-56],[20,-38],[-48,-40],[-90,-48]];
+  c.save();c.translate(-4,-3);blob(c,torso,RED);c.restore();blob(c,torso,DARK);
+  blob(c,[[-92,-96],[-78,-130],[-44,-142],[-20,-138],[-46,-120],[-70,-100],[-84,-74]],PLUM);
+  // Near-side legs swing from the shoulder and hip.
+  for(const [x,phase] of [[-66,Math.PI],[38,0]]) {
     const move=b.state==='seek'?Math.sin(b.gait+phase)*12:0;
-    polygon(c,[[x-15,-65],[x+20,-67],[x+16+move,-10],[x+28+move,-3],[x+29+move,3],[x-14+move,2]],INK);
-    line(c,[[x-5+move,-6],[x-3+move,0]],PAPER,.8);line(c,[[x+4+move,-6],[x+6+move,0]],PAPER,.8);
+    blob(c,[[x-17,-68],[x+20,-70],[x+17+move,-10],[x+29+move,-2],[x+29+move,3],[x-16+move,3]],DARK);
+    line(c,[[x-5+move,-5],[x-3+move,1]],PAPER,.9);line(c,[[x+5+move,-5],[x+7+move,1]],PAPER,.9);
   }
-  c.save();c.translate(40,-106);c.rotate(eating?Math.sin(world.time*22)*.07:Math.sin(world.time*.8+b.id)*.025);
-  polygon(c,[[-16,-30],[-24,-47],[-16,-63],[-3,-64],[10,-50],[31,-43],[42,-29],[50,-5],[80,9],[82,23],[63,40],[30,41],[10,23],[-11,17],[-23,-3]],RED);
-  polygon(c,[[-19,-28],[-29,-48],[-21,-64],[-7,-68],[8,-51],[32,-46],[46,-29],[53,-6],[78,5],[88,16],[77,32],[56,40],[25,33],[7,18],[-17,13],[-26,-4]],INK);
-  // Angular cheek, ear cutout, white eye, and red muzzle.
-  polygon(c,[[-16,-51],[-16,-59],[-7,-57],[-1,-47]],RED);
-  polygon(c,[[28,-26],[35,-12],[34,9],[48,27],[66,30],[77,22],[71,12],[47,5]],RED);
-  polygon(c,[[30,-25],[42,-22],[33,-18]],PAPER);
-  polygon(c,[[76,6],[88,14],[81,20],[72,15]],INK);
-  line(c,[[53,25],[66,24],[73,20]],PAPER,1.3);
-  if(eating){c.fillStyle=PAPER;c.font='bold 16px Georgia';c.fillText('·',87,29);}
+  // Red showing through the black where the block was cut.
+  line(c,[[-60,-128],[-50,-118],[-44,-116]],RED,1.4);line(c,[[-88,-92],[-80,-84],[-78,-74]],RED,1.2);line(c,[[-20,-60],[-8,-54]],RED,1.2);
+  // Head, turned to the viewer.
+  c.save();c.translate(42,-102);c.rotate(eating?Math.sin(world.time*22)*.06:Math.sin(world.time*.8+b.id)*.03);
+  for(const [ex,ey] of [[-33,-37],[31,-39]]) {
+    c.beginPath();c.arc(ex-3,ey-3,18,0,Math.PI*2);c.fillStyle=RED;c.fill();
+    c.beginPath();c.arc(ex,ey,18,0,Math.PI*2);c.fillStyle=PLUM;c.fill();
+    c.beginPath();c.arc(ex+1,ey+2,10,0,Math.PI*2);c.fillStyle=DARK;c.fill();
+  }
+  const head=[[-48,-6],[-42,-38],[-14,-52],[14,-52],[42,-38],[48,-4],[40,28],[14,44],[-14,44],[-40,28]];
+  c.save();c.translate(-3,-3);blob(c,head,RED);c.restore();blob(c,head,PLUM);
+  blob(c,[[-34,-20],[-20,-25],[-11,-14],[-17,-2],[-31,-5]],DARK);blob(c,[[34,-20],[20,-25],[11,-14],[17,-2],[31,-5]],DARK);
+  blob(c,[[-5,-36],[7,-32],[11,-10],[28,6],[30,28],[14,42],[-14,42],[-30,28],[-26,6],[-11,-10]],RED);
+  blob(c,[[-7,-45],[3,-47],[5,-40],[-3,-38]],RED);line(c,[[-3,-44],[1,-41]],PAPER,1);
+  const open=eating?13+Math.abs(Math.sin(world.time*16))*7:12;
+  c.beginPath();c.ellipse(1,23,16,open,0,0,Math.PI*2);c.fillStyle=DARK;c.fill();
+  line(c,[[-24,30],[-17,38]],PAPER,1.4);line(c,[[19,9],[25,3]],PAPER,1.1);line(c,[[-9,-4],[-4,6]],PAPER,.8);
   c.restore();
-  // Hand-cut fur marks: intentionally angular, never a raster sprite.
-  const cuts=[[[-70,-119],[-62,-128],[-65,-111]],[[-43,-139],[-35,-130],[-31,-141]],[[-81,-84],[-71,-76],[-76,-94]],[[-24,-59],[-10,-53],[-17,-68]],[[8,-127],[16,-113],[22,-121]],[[1,-70],[9,-57],[16,-67]]];
-  cuts.forEach((p,i)=>polygon(c,p,i%3? '#34372c':RED));
-  line(c,[[-52,-136],[-44,-124],[-38,-119]],PAPER,.7);
-  line(c,[[-83,-106],[-73,-101],[-67,-90]],PAPER,.7);
   c.restore();
   if(inspect) {
     c.save();c.strokeStyle=PAPER;c.lineWidth=1;c.setLineDash([5,5]);c.strokeRect(b.x-100*b.scale,GROUND-172*b.scale,235*b.scale,172*b.scale);c.setLineDash([]);
