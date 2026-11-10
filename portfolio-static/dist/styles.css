@@ -241,3 +241,6 @@ h2,h3,.who,.contents li,.ticks,.list ul,.go,.chips span,.pointing,.mast nav a,.p
 .page-r .edition{transform:rotate(1deg);margin-top:12px}
 .edition span:nth-child(2){flex:1;text-align:center}
 @media(max-width:760px){.edition{font-size:18px;margin-bottom:18px}}
+
+/* The scraps scale up briefly as they land; do not let that widen the page. */
+.notebook{overflow-x:clip}
