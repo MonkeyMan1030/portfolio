@@ -8,6 +8,8 @@ A static notebook portfolio with a procedural autumn tree, physical falling leav
 python3 -m http.server 4173 --directory portfolio-static/dist
 node tests/ecosystem.mjs
 node tests/leaves.mjs
+node tests/hibernation.mjs
+node tests/render-budget.mjs
 ```
 
 Open http://localhost:4173. No package installation or build step is needed.
@@ -22,7 +24,7 @@ Open http://localhost:4173. No package installation or build step is needed.
 - `ecosystem.mjs`: deterministic fixed-step simulation, letter contacts, exclusive target reservations, feeding/flip/birth state machine. No browser dependencies.
 - `creatures.js`: procedural Canvas drawings, pointer and keyboard controls, visibility management, accessible status updates, inspection overlay.
 - `site.js` / `notebook.js`: progressive branch drawing on every homepage load; Skip/Replay, scroll-grown margin vines, pointer/scroll wind, and motion controls.
-- `leaves.mjs`: seeded, fixed-step leaf simulation; swept contacts against measured letter/heading ledges, attachment/reflow, wind release, and a 64-leaf cap.
+- `leaves.mjs`: seeded, fixed-step leaf simulation; swept contacts against measured letter/heading ledges, attachment/reflow, wind release, and a 96-leaf mobile / 600-leaf desktop cap.
 - `sketch.js`: seeded, generated pencil underlines that draw themselves when a heading scrolls into view.
 - `orbit-mini.js`: the live two-body drawing on the home page card; uses `physics.mjs`.
 - `physics.mjs` / `orbit.js`: two-body velocity-Verlet model and visualization.
@@ -47,3 +49,9 @@ npx wrangler deploy --name portfolio --assets ./portfolio-static/dist --compatib
 ```
 
 Public site: https://www.mattiasreinhardt.com
+
+## Mobile rendering
+
+Touchscreen swipes use native vertical scrolling and pinch zoom. A stationary tap on a non-link letter feeds the bear; mouse dragging remains available. Mobile canvases draw at most 30 times per second during continuous animation, with unchanged fixed-step physics. The page canvas reuses its backing store as Safari's toolbar changes height. Font outlines and heading positions update only after layout changes; eating a letter reuses the geometry cache. Tree foliage is drawn once into eight layers and revealed during the opening animation. Mobile paper texture and borders avoid live SVG filters.
+
+The root hostname uses a proxied A record and Cloudflare's enabled root-to-www 301 rule, preserving paths and query strings. The www hostname remains bound to the portfolio Worker.

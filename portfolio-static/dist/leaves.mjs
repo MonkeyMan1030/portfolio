@@ -1,4 +1,4 @@
-import {leafBottom} from './contact.js';
+import {leafBottom} from './contact.js?v=12';
 // Browser-independent leaf dynamics. Coordinates are CSS pixels in the document.
 export function seededRandom(seed=83){return()=>{seed|=0;seed=seed+0x6d2b79f5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
 export class LeafField {
@@ -22,7 +22,7 @@ export class LeafField {
       l.age+=dt;
       if(l.ledge!==null){
         const ledge=this.ledges.get(l.ledge);
-        if(ledge&&l.offset>=0&&l.offset<=ledge.width){l.x=ledge.x+l.offset;l.y=ledge.y-leafBottom(l.r,l.angle)-(l.stack||0);l.rest+=dt;continue;}
+        if(ledge&&l.offset>=0&&l.offset<=ledge.width){l.x=ledge.x+l.offset;l.y=ledge.y-(l.bottom??=leafBottom(l.r,l.angle))-(l.stack||0);l.rest+=dt;continue;}
         l.ledge=null;l.y-=3;l.vx=this.wind*.8-12;l.vy=-16;l.rest=0;
       }
       if(l.clearing){l.x+=l.vx*dt;l.y-=90*dt;l.angle+=dt;continue;}
@@ -31,11 +31,11 @@ export class LeafField {
       l.vx+=(flow-l.vx)*Math.min(1,dt*1.1);l.vy=Math.min(38+l.r*2,l.vy+29*dt);
       l.x+=l.vx*dt;l.y+=l.vy*dt;l.angle+=(l.spin*.7+l.vx*.012)*dt;
       if(l.vy>0){
-        let hit=null;
+        let hit=null;const bottom=l.bottom=leafBottom(l.r,l.angle);
         for(const ledge of this.columns?.get(Math.floor(l.x/8))||[]){
-          if(l.x>=ledge.x&&l.x<=ledge.x+ledge.width&&previousY+leafBottom(l.r,l.angle)<=ledge.y&&l.y+leafBottom(l.r,l.angle)>=ledge.y&&(!hit||ledge.y<hit.y))hit=ledge;
+          if(l.x>=ledge.x&&l.x<=ledge.x+ledge.width&&previousY+bottom<=ledge.y&&l.y+bottom>=ledge.y&&(!hit||ledge.y<hit.y))hit=ledge;
         }
-        if(hit){l.ledge=hit.id;l.offset=l.x-hit.x;const neighbors=this.leaves.filter(o=>o!==l&&o.ledge!==null&&Math.abs(o.x-l.x)<l.r&&Math.abs((this.ledges.get(o.ledge)?.y??Infinity)-hit.y)<2);l.stack=neighbors.length?Math.max(...neighbors.map(o=>(o.stack||0)+leafBottom(o.r,o.angle)+leafBottom(o.r,o.angle+Math.PI))):0;l.y=hit.y-leafBottom(l.r,l.angle)-l.stack;l.vx=0;l.vy=0;l.rest=0;}
+        if(hit){l.ledge=hit.id;l.offset=l.x-hit.x;const neighbors=this.leaves.filter(o=>o!==l&&o.ledge!==null&&Math.abs(o.x-l.x)<l.r&&Math.abs((this.ledges.get(o.ledge)?.y??Infinity)-hit.y)<2);l.stack=neighbors.length?Math.max(...neighbors.map(o=>(o.stack||0)+leafBottom(o.r,o.angle)+leafBottom(o.r,o.angle+Math.PI))):0;l.y=hit.y-bottom-l.stack;l.vx=0;l.vy=0;l.rest=0;}
       }
     }
     this.leaves=this.leaves.filter(l=>(!l.clearing||l.y>-40)&&l.y<this.height+35&&l.x>-180&&l.x<this.width+180);

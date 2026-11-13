@@ -273,3 +273,14 @@ h2,h3,.who,.contents li,.ticks,.list ul,.go,.chips span,.pointing,.mast nav a,.p
 .bear-request{min-height:72px;box-sizing:border-box;position:absolute;top:65px;right:5%;z-index:2;margin:0;pointer-events:none}.drawing-on .habitat{animation-delay:1.95s}.drawing-on .contents li{animation-delay:calc(1.3s + var(--n,0)*.12s)}
 .elite,.shot{transform:none!important}.shot img{max-height:none;object-fit:contain}
 .sk .habitat{margin-top:-10px}
+
+/* Native touch scrolling and a bounded mobile paint budget. The live tree,
+   leaf contacts, handwriting, and opening sequence remain active. */
+@media (pointer:coarse){
+ .food-letter,.edible{touch-action:pan-y pinch-zoom}
+ body:before{display:none}
+ :root{--paper-tex:none;--fibre:repeating-linear-gradient(8deg,#604d2905 0px,#604d2905 1px,transparent 1px,transparent 5px)}
+ .scrap:before,.scrap:after,.sk .habitat:before,.sk .habitat:after,.contact-print:before,.contact-print:after{filter:none;border-radius:2px 5px 3px 6px}
+ .drawing-on .edible,.drawing-on .scrap,.drawing-on .habitat,.drawing-on .list,.drawing-on .contents,.drawing-on .contents li,.drawing-on .who{animation-name:mobile-ink-reveal}
+}
+@keyframes mobile-ink-reveal{from{opacity:0}to{opacity:1}}

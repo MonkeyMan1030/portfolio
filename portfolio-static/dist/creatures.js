@@ -4,6 +4,8 @@ import { Habitat, WIDTH, HEIGHT, GROUND, randomGenerator, mouthPosition } from '
 const $ = id => document.getElementById(id);
 const canvas = $('creature-canvas'), ctx = canvas.getContext('2d');
 const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+const mobile=matchMedia('(pointer: coarse)').matches,frameInterval=mobile?1000/30:1000/60;
+let paintedAt=0;
 const world = new Habitat();
 const INK = '#1d201b', PAPER = '#f1ead6', RED = '#c0281c', BLUE = '#dfe3d1';
 let paused = reduce.matches, inspect = false, visible = true, frameId = 0, last = 0, accumulator = 0, pixelRatio = 1, uiAt = 0;
@@ -110,7 +112,7 @@ function processEvents(){for(const e of world.drainEvents()){
  else if(e.type==='sleep')announce('Hibernating for 20 seconds.');else restore(e.letter);
  }requestWord();}
 function frame(now) {
-  frameId=0;const elapsed=last?Math.min((now-last)/1000,.05):0;last=now;
+  frameId=0;if(now-paintedAt<frameInterval-1){schedule();return;}paintedAt=now;const elapsed=last?Math.min((now-last)/1000,.05):0;last=now;
   if(!paused&&visible&&!document.hidden){accumulator+=elapsed;let count=0;while(accumulator>=1/120&&count++<8){world.step(1/120);accumulator-=1/120;}processEvents();draw();if(now-uiAt>180){sync();uiAt=now;}}
   schedule();
 }
@@ -128,15 +130,18 @@ $('creature-pause').addEventListener('click',()=>{document.dispatchEvent(new Cus
 $('inspect').addEventListener('click',()=>{inspect=!inspect;$('mechanics').hidden=!inspect;$('inspect').setAttribute('aria-pressed',String(inspect));sync();draw();});
 $('restart').addEventListener('click',()=>{for(const id of sourceLetters.keys())restore(id);world.reset();accumulator=0;sync();draw();announce('Simulation reset. One bear.');schedule();});
 // Pointer capture keeps a dragged heading letter attached outside the text bounds.
-let drag=null, suppressClickUntil=0,dragWasMoved=false;
+let drag=null,touchTap=null, suppressClickUntil=0,dragWasMoved=false;
 for(const button of document.querySelectorAll('.food-letter')) {
   button.addEventListener('pointerdown',e=>{
     if(button.getAttribute('aria-disabled')==='true'||e.button!==0||drag)return;
+    // A finger swipe belongs to Safari. A stationary tap can still feed a letter.
+    if(e.pointerType==='touch'){touchTap={button,id:e.pointerId,x:e.clientX,y:e.clientY};return;}
     button.setPointerCapture(e.pointerId);
     const ghost=document.createElement('span');ghost.className='drag-letter';ghost.textContent=button.textContent;ghost.style.left=e.clientX+'px';ghost.style.top=e.clientY+'px';ghost.setAttribute('aria-hidden','true');document.body.append(ghost);
     drag={button,ghost,id:e.pointerId,x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,time:performance.now(),vx:0,vy:0,moved:false};
   });
   button.addEventListener('pointermove',e=>{
+    if(touchTap?.id===e.pointerId&&Math.hypot(e.clientX-touchTap.x,e.clientY-touchTap.y)>7)touchTap=null;
     if(!drag||drag.id!==e.pointerId)return;
     const now=performance.now(),dt=Math.max(.016,(now-drag.time)/1000),r=canvas.getBoundingClientRect();
     if(e.clientY>innerHeight-65)window.scrollBy(0,22);else if(e.clientY<65)window.scrollBy(0,-22);
@@ -146,6 +151,7 @@ for(const button of document.querySelectorAll('.food-letter')) {
     drag.ghost.style.left=e.clientX+'px';drag.ghost.style.top=e.clientY+'px';
   });
   button.addEventListener('pointerup',e=>{
+    if(e.pointerType==='touch'){const tap=touchTap;touchTap=null;if(tap?.id===e.pointerId&&!button.closest('a')){spawn(button.textContent,320+world.random()*180,70,0,0,button);suppressClickUntil=performance.now()+400;dragWasMoved=false;}return;}
     if(!drag||drag.id!==e.pointerId)return;
     const d=drag;dragWasMoved=d.moved;drag=null;d.ghost.remove();suppressClickUntil=performance.now()+400;
     const r=canvas.getBoundingClientRect(),inside=e.clientX>=r.left&&e.clientX<=r.right&&e.clientY>=r.top&&e.clientY<=r.bottom;
@@ -153,7 +159,7 @@ for(const button of document.querySelectorAll('.food-letter')) {
     else if(!d.moved&&button.classList.contains('edible')){spawn(button.textContent,320+world.random()*180,70,0,0,button);canvas.scrollIntoView({block:'center',behavior:reduce.matches?'instant':'smooth'});}
     else announce('Drop the letter into the bear drawing.');
   });
-  const cancel=()=>{if(drag?.button===button){drag.ghost.remove();drag=null;}};
+  const cancel=()=>{touchTap=null;if(drag?.button===button){drag.ghost.remove();drag=null;}};
   button.addEventListener('pointercancel',cancel);button.addEventListener('lostpointercapture',cancel);
   button.addEventListener('click',e=>{if(performance.now()<suppressClickUntil||button.getAttribute('aria-disabled')==='true'){if(button.closest('a')&&dragWasMoved)e.preventDefault();return;}if(e.detail===0&&button.classList.contains('edible'))spawn(button.textContent,320+world.random()*180,70,0,0,button);});
 }

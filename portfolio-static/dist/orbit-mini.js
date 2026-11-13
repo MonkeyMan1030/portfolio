@@ -5,10 +5,12 @@ if (canvas) {
   const ctx = canvas.getContext('2d');
   const presets = [[1, 0.894], [3, 0.8], [6, 1.02], [1.6, 0.7]];
   const reduce = matchMedia('(prefers-reduced-motion: reduce)');
+  const mobile=matchMedia('(pointer: coarse)').matches,frameInterval=mobile?1000/30:1000/60;
+  let paintedAt=0;
   let which = 0, bodies, trails, paused = reduce.matches, visible = true, raf = 0, last = 0, acc = 0, W = 0, H = 0, dpr = 1;
   function reset() { bodies = createSystem(...presets[which]); trails = [[], []]; }
   function size() {
-    const r = canvas.getBoundingClientRect(); dpr = Math.min(devicePixelRatio || 1, 2);
+    const r = canvas.getBoundingClientRect(); dpr = Math.min(devicePixelRatio || 1, mobile?1.5:2);
     W = r.width; H = r.height; canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
   }
   // Two slightly offset passes so every line looks like it was gone over twice in pencil.
@@ -35,7 +37,7 @@ if (canvas) {
     });
   }
   function frame(now) {
-    raf = 0; const dt = last ? Math.min((now - last) / 1000, 0.05) : 0; last = now; acc += dt * 1.4;
+    raf = 0; if(now-paintedAt<frameInterval-1){schedule();return;}paintedAt=now;const dt = last ? Math.min((now - last) / 1000, 0.05) : 0; last = now; acc += dt * 1.4;
     let n = 0;
     while (acc >= 1 / 240 && n++ < 24) {
       try { step(bodies, 1 / 240); } catch { reset(); }

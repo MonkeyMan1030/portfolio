@@ -1,25 +1,36 @@
-import {textSurfaces} from './contact.js';
-import { LeafField, seededRandom } from './leaves.mjs';
+import {textSurfaces} from './contact.js?v=12';
+import { LeafField, seededRandom } from './leaves.mjs?v=12';
 const canvas=document.getElementById('page-sketch'),ctx=canvas?.getContext('2d');
 const book=document.querySelector('.notebook'),anchor=document.querySelector('.tree-anchor');
 const replay=document.getElementById('replay-drawing'),motion=document.getElementById('page-motion');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
+const mobile=matchMedia('(pointer: coarse)').matches,frameInterval=mobile?1000/30:1000/60;
 const field=new LeafField(231),colors=['#bd4e22','#dba832','#8f3826','#d77724'];
 let paused=reduced.matches,raf=0,last=0,acc=0,scrollY=window.scrollY,previousScroll=scrollY,lastScrollAt=0;
-let W=innerWidth,H=innerHeight,dpr=1,tree=null,branches=[],buds=[],foliage=[],surfaces=[],bookRect=null,geometryDirty=true;
-let introStart=0,intro=false,seedBurst=false,spawnAt=0,frameCount=0,windVisual=0,pointer=null,hasStarted=false;
+let W=innerWidth,H=innerHeight,dpr=1,tree=null,branches=[],buds=[],foliage=[],bookRect=null,geometryDirty=true;
+let introStart=0,intro=false,seedBurst=false,spawnAt=0,windVisual=0,pointer=null,hasStarted=false;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+let underlines=[],ledgesDirty=false,paintRequested=true,paintAt=0,treeSize='',sizeKey='',introDoneAt=0;
+field.maxLeaves=mobile?96:600;
+function sizeCanvas(){
+ W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,mobile?1.5:2);
+ // Safari's toolbar only changes height. Keep one backing store through its scroll animation.
+ const key=W+':'+dpr,stableHeight=mobile?Math.max(H,screen.height):H;
+ if(key!==sizeKey||(!mobile&&canvas.height!==Math.ceil(stableHeight*dpr))||canvas.height<Math.ceil(H*dpr)){
+  sizeKey=key;canvas.width=Math.round(W*dpr);canvas.height=Math.ceil(stableHeight*dpr);canvas.style.width=W+'px';canvas.style.height=stableHeight+'px';
+ }
+}
 function measure(){
-  W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,2);canvas.width=Math.round(W*dpr);canvas.height=Math.round(H*dpr);
+  sizeCanvas();
   const b=book.getBoundingClientRect();bookRect={left:b.left,right:b.right,top:b.top+scrollY,height:book.offsetHeight};
   field.width=W;field.height=document.documentElement.scrollHeight;
-  surfaces=[...document.querySelectorAll('.edible,.leaf-ledge')].map((element,id)=>({element,id}));
+  underlines=[...document.querySelectorAll('#name .name-line')].map(line=>{const r=line.getBoundingClientRect();return{left:r.left,width:r.width,y:r.bottom+scrollY+3};});
   updateLedges();
-  if(anchor){const r=anchor.getBoundingClientRect();tree={x:r.left,y:r.top+scrollY,w:r.width,h:r.height};buildTree();}
+  if(anchor){const r=anchor.getBoundingClientRect();tree={x:r.left,y:r.top+scrollY,w:r.width,h:r.height};const key=[r.width,r.height,dpr].join(':');if(key!==treeSize){treeSize=key;buildTree();}}
   geometryDirty=false;
 }
-function updateLedges(){field.setLedges(textSurfaces());}
-document.addEventListener('letter-layout',()=>{geometryDirty=true;if(paused){measure();render(performance.now());}else schedule();});
+function updateLedges(reuseLayout=false){field.setLedges(textSurfaces({reuseLayout}));ledgesDirty=false;}
+document.addEventListener('letter-layout',()=>{ledgesDirty=true;requestPaint();});
 if(anchor){anchor.removeAttribute('aria-hidden');const reset=document.createElement('button');reset.id='reset-leaves';reset.type='button';reset.textContent='reset leaves';anchor.append(reset);reset.onclick=()=>{for(const l of field.leaves){l.ledge=null;l.clearing=true;l.vx=(field.random()-.5)*80;}if(paused){field.leaves=[];render(performance.now());}else schedule();};}
 function buildTree(){
  branches=[];buds=[];const random=seededRandom(823),w=Math.min(tree.w*.94,450),h=tree.h,ox=(tree.w-w)*.6;
@@ -45,7 +56,7 @@ function leafShape(x,y,r,a,color,alpha=1,paint=ctx){
   ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.globalAlpha*=alpha;ctx.beginPath();ctx.moveTo(-r,0);ctx.quadraticCurveTo(-r*.7,-r*.8,0,-r*.55);ctx.lineTo(r*.45,-r*.9);ctx.lineTo(r*.55,-r*.25);ctx.lineTo(r,0);ctx.quadraticCurveTo(r*.2,r, -r,0);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#695b3f';ctx.lineWidth=.45;ctx.stroke();ctx.beginPath();ctx.moveTo(-r*1.3,.3);ctx.lineTo(r*.68,0);ctx.moveTo(-r*.3,0);ctx.lineTo(r*.1,-r*.35);ctx.stroke();ctx.restore();
 }
 function drawTree(elapsed){
-  if(!tree||tree.y+tree.h<scrollY-100)return;
+  if(!tree||tree.y+tree.h<scrollY-100||tree.y>scrollY+H+100)return;
   const drawTime=intro?elapsed:10;
   ctx.save();ctx.beginPath();ctx.rect(bookRect.left,bookRect.top+68,bookRect.right-bookRect.left,bookRect.height);ctx.clip();ctx.translate(tree.x,tree.y);
   const sway=windVisual*.025;
@@ -62,8 +73,7 @@ function drawTree(elapsed){
     ctx.beginPath();ctx.moveTo(p0[0]+2,p0[1]+.8);ctx.quadraticCurveTo(q[0]+1.8,q[1],e[0]+1,e[1]);ctx.strokeStyle='#7a76564d';ctx.lineWidth=.65;ctx.stroke();
     if(t<1){ctx.beginPath();ctx.arc(e[0],e[1],1.4,0,Math.PI*2);ctx.fillStyle='#535e48';ctx.fill();}
   }
-  if(intro)buds.forEach((b,i)=>{const t=clamp((drawTime-b.delay)/.65,0,1);if(!t)return;const sway=Math.sin(field.time*.6+Math.floor(i/210))*.7+windVisual*.008;leafShape(b.x+sway,b.y,b.r*t,b.angle,colors[b.color],.82+(i%210%3)*.06);});
-  else foliage.forEach((layer,i)=>ctx.drawImage(layer,Math.sin(field.time*.6+i)*.7+windVisual*.008,0,tree.w,tree.h));
+  foliage.forEach((layer,i)=>{const t=intro?clamp((drawTime-.65-i*.06)/1.5,0,1):1;if(!t)return;ctx.save();ctx.globalAlpha=t;ctx.drawImage(layer,Math.sin(field.time*.6+i)*.7+windVisual*.008,0,tree.w,tree.h);ctx.restore();});
   ctx.restore();
 }
 function drawMargins(elapsed){
@@ -79,13 +89,11 @@ function drawMargins(elapsed){
   }
 }
 function drawUnderlines(elapsed){
-  const e=document.getElementById('name');if(!e)return;
-  const names=e.querySelectorAll('.name-line');
-  names.forEach((line,i)=>{const r=line.getBoundingClientRect(),y=r.bottom+scrollY+3;const t=intro?clamp((elapsed-1.2-i*.35)/.65,0,1):1;ctx.beginPath();ctx.moveTo(r.left+4,y);const end=r.left+(r.width-7)*t;ctx.quadraticCurveTo(r.left+r.width*.5,y+4,end,y+1);ctx.strokeStyle='#c5391fd9';ctx.lineWidth=2.4;ctx.lineCap='round';ctx.stroke();if(intro&&t>0&&t<1){ctx.beginPath();ctx.moveTo(end,y);ctx.lineTo(end+16,y-29);ctx.strokeStyle='#626a56';ctx.lineWidth=3;ctx.stroke();}});
+  underlines.forEach((r,i)=>{const y=r.y;if(y<scrollY-30||y>scrollY+H+30)return;const t=intro?clamp((elapsed-1.2-i*.35)/.65,0,1):1;ctx.beginPath();ctx.moveTo(r.left+4,y);const end=r.left+(r.width-7)*t;ctx.quadraticCurveTo(r.left+r.width*.5,y+4,end,y+1);ctx.strokeStyle='#c5391fd9';ctx.lineWidth=2.4;ctx.lineCap='round';ctx.stroke();if(intro&&t>0&&t<1){ctx.beginPath();ctx.moveTo(end,y);ctx.lineTo(end+16,y-29);ctx.strokeStyle='#626a56';ctx.lineWidth=3;ctx.stroke();}});
 }
 function render(now){
   if(!ctx)return;const elapsed=(now-introStart)/1000;
-  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,H);ctx.save();ctx.translate(0,-scrollY);
+  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);ctx.save();ctx.translate(0,-scrollY);
   drawMargins(elapsed);drawTree(elapsed);drawUnderlines(elapsed);
   for(const l of field.leaves){if(l.y<scrollY-25||l.y>scrollY+H+25)continue;const fade=1;leafShape(l.x,l.y,l.r,l.angle,colors[l.color],fade*.86);}
   ctx.restore();
@@ -102,11 +110,13 @@ function release(count=1){
 function finishIntro(){intro=false;document.body.classList.remove('drawing-on','intro-pending');if(replay)replay.textContent='Replay drawing';}
 function startIntro(){
   if(!anchor||paused){finishIntro();render(performance.now());return;}
-  introStart=performance.now();intro=true;seedBurst=false;field.leaves=[];spawnAt=0;document.body.classList.remove('drawing-on');void book.offsetWidth;document.body.classList.add('drawing-on');document.body.classList.remove('intro-pending');replay.textContent='Skip drawing';geometryDirty=true;last=0;schedule();
+  introStart=performance.now();intro=true;seedBurst=false;field.leaves=[];spawnAt=0;document.body.classList.remove('drawing-on');void book.offsetWidth;document.body.classList.add('drawing-on');document.body.classList.remove('intro-pending');replay.textContent='Skip drawing';last=0;introDoneAt=introStart+3600;requestPaint();
 }
 function frame(now){
-  raf=0;scrollY=window.scrollY;
-  if(geometryDirty)measure();
+  raf=0;
+  if(!paintRequested&&now-paintAt<frameInterval-1){schedule();return;}
+  paintAt=now;paintRequested=false;scrollY=window.scrollY;
+  if(geometryDirty)measure();else if(ledgesDirty)updateLedges(true);
   const dt=last?Math.min((now-last)/1000,.05):0;last=now;
   if(!paused){
     acc+=dt;let steps=0;while(acc>=1/120&&steps++<8){field.step(1/120);acc-=1/120;}
@@ -114,25 +124,26 @@ function frame(now){
 
     const elapsed=(now-introStart)/1000;
     if(intro&&elapsed>1.5&&!seedBurst){release(14);seedBurst=true;}
-    if(intro&&elapsed>3.5&&!book.getAnimations({subtree:true}).some(a=>a.playState==='running'))finishIntro();
+    if(intro&&now>=introDoneAt)finishIntro();
     if(tree&&tree.y+tree.h>scrollY&&tree.y<scrollY+H&&now-spawnAt>1600&&(!intro||elapsed>1.6)){release();spawnAt=now;}
   }
   render(now);schedule();
 }
-function schedule(){if(ctx&&!raf&&!document.hidden&&!paused&&(intro||(tree&&tree.y+tree.h>scrollY&&tree.y<scrollY+H)||field.leaves.some(l=>l.ledge===null)))raf=requestAnimationFrame(frame);}
+function requestPaint(){paintRequested=true;schedule();}
+function schedule(){if(ctx&&hasStarted&&!raf&&!document.hidden&&(paintRequested||(!paused&&(intro||(tree&&tree.y+tree.h>scrollY&&tree.y<scrollY+H)||field.leaves.some(l=>l.ledge===null)))))raf=requestAnimationFrame(frame);}
 function setPaused(value){paused=value;document.body.classList.toggle("motion-paused",value);motion?.setAttribute('aria-pressed',String(paused));if(motion)motion.textContent=paused?'Resume motion':'Pause motion';motion?.setAttribute('aria-label',paused?'Resume page animation':'Pause page animation');document.dispatchEvent(new CustomEvent('notebook-motion',{detail:{paused}}));if(paused){finishIntro();if(raf)cancelAnimationFrame(raf);raf=0;render(performance.now());}else{last=0;schedule();}}
 replay?.addEventListener('click',()=>{if(intro)finishIntro();else{if(paused)setPaused(false);startIntro();}});
 motion?.addEventListener('click',()=>setPaused(!paused));
 document.addEventListener('motion-request',e=>setPaused(e.detail.paused));
-window.addEventListener('scroll',()=>{const now=performance.now(),y=window.scrollY,delta=y-previousScroll,dt=Math.max(16,now-lastScrollAt);field.gust(clamp(delta/dt*10,-30,30));previousScroll=y;lastScrollAt=now;scrollY=y;render(now);schedule();},{passive:true});
+window.addEventListener('scroll',()=>{const now=performance.now(),y=window.scrollY,delta=y-previousScroll,dt=Math.max(16,now-lastScrollAt);field.gust(clamp(delta/dt*10,-30,30));previousScroll=y;lastScrollAt=now;scrollY=y;requestPaint();},{passive:true});
 window.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||paused)return;const now=performance.now();if(pointer){const dt=Math.max(16,now-pointer.time);const vx=(e.clientX-pointer.x)/dt*1000,vy=(e.clientY-pointer.y)/dt*1000;field.disturb(e.clientX,e.clientY+scrollY,vx,vy);if(Math.abs(vx)>100)field.gust(clamp(vx*.003,-3,3));}pointer={x:e.clientX,y:e.clientY,time:now};},{passive:true});
-window.addEventListener('resize',()=>{geometryDirty=true;if(paused){measure();render(performance.now());}});
-new ResizeObserver(()=>{geometryDirty=true;if(paused){measure();render(performance.now());}else schedule();}).observe(book);
-document.addEventListener('visibilitychange',()=>{last=0;if(document.hidden&&raf){cancelAnimationFrame(raf);raf=0;}else schedule();});
+window.addEventListener('resize',()=>{if(innerWidth!==W)geometryDirty=true;sizeCanvas();requestPaint();});
+new ResizeObserver(()=>{geometryDirty=true;requestPaint();}).observe(book);
+document.addEventListener('visibilitychange',()=>{last=0;if(document.hidden&&raf){cancelAnimationFrame(raf);raf=0;}else requestPaint();});
 reduced.addEventListener('change',e=>{if(e.matches)setPaused(true);});
 if(!anchor&&replay)replay.hidden=true;
 if(ctx){
-  measure();setPaused(paused);
+  setPaused(paused);
   // Wait for the local handwriting font, but never leave content waiting on it.
   const ready=document.fonts?document.fonts.ready:Promise.resolve();
   const begin=()=>{if(hasStarted)return;hasStarted=true;measure();if(anchor&&!paused)startIntro();else render(performance.now());schedule();};
