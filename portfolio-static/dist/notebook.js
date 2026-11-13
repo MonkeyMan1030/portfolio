@@ -1,6 +1,10 @@
-import {textSurfaces} from './contact.js?v=12';
-import { LeafField, seededRandom } from './leaves.mjs?v=12';
-const canvas=document.getElementById('page-sketch'),ctx=canvas?.getContext('2d');
+import {SketchTiles} from './sketch-tiles.mjs?v=13';
+import {textSurfaces} from './contact.js?v=13';
+import { LeafField, seededRandom } from './leaves.mjs?v=13';
+const canvas=document.getElementById('page-sketch');
+let ctx=canvas?.getContext('2d');
+const drawing=new SketchTiles(canvas,()=>{const tile=document.createElement('canvas');document.body.append(tile);return tile;});
+let paintTop=0,paintBottom=0;
 const book=document.querySelector('.notebook'),anchor=document.querySelector('.tree-anchor');
 const replay=document.getElementById('replay-drawing'),motion=document.getElementById('page-motion');
 const reduced=matchMedia('(prefers-reduced-motion: reduce)');
@@ -10,20 +14,13 @@ let paused=reduced.matches,raf=0,last=0,acc=0,scrollY=window.scrollY,previousScr
 let W=innerWidth,H=innerHeight,dpr=1,tree=null,branches=[],buds=[],foliage=[],bookRect=null,geometryDirty=true;
 let introStart=0,intro=false,seedBurst=false,spawnAt=0,windVisual=0,pointer=null,hasStarted=false;
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-let underlines=[],ledgesDirty=false,paintRequested=true,paintAt=0,treeSize='',sizeKey='',introDoneAt=0;
+let underlines=[],ledgesDirty=false,paintRequested=true,paintAt=0,treeSize='',introDoneAt=0;
 field.maxLeaves=mobile?96:600;
-function sizeCanvas(){
- W=innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,mobile?1.5:2);
- // Safari's toolbar only changes height. Keep one backing store through its scroll animation.
- const key=W+':'+dpr,stableHeight=mobile?Math.max(H,screen.height):H;
- if(key!==sizeKey||(!mobile&&canvas.height!==Math.ceil(stableHeight*dpr))||canvas.height<Math.ceil(H*dpr)){
-  sizeKey=key;canvas.width=Math.round(W*dpr);canvas.height=Math.ceil(stableHeight*dpr);canvas.style.width=W+'px';canvas.style.height=stableHeight+'px';
- }
-}
 function measure(){
-  sizeCanvas();
+  W=document.documentElement.clientWidth||innerWidth;H=innerHeight;dpr=Math.min(devicePixelRatio||1,mobile?1.5:2);
   const b=book.getBoundingClientRect();bookRect={left:b.left,right:b.right,top:b.top+scrollY,height:book.offsetHeight};
-  field.width=W;field.height=document.documentElement.scrollHeight;
+  field.width=W;field.height=Math.ceil(bookRect.top+bookRect.height);
+  drawing.resize(W,field.height,dpr);
   underlines=[...document.querySelectorAll('#name .name-line')].map(line=>{const r=line.getBoundingClientRect();return{left:r.left,width:r.width,y:r.bottom+scrollY+3};});
   updateLedges();
   if(anchor){const r=anchor.getBoundingClientRect();tree={x:r.left,y:r.top+scrollY,w:r.width,h:r.height};const key=[r.width,r.height,dpr].join(':');if(key!==treeSize){treeSize=key;buildTree();}}
@@ -31,7 +28,7 @@ function measure(){
 }
 function updateLedges(reuseLayout=false){field.setLedges(textSurfaces({reuseLayout}));ledgesDirty=false;}
 document.addEventListener('letter-layout',()=>{ledgesDirty=true;requestPaint();});
-if(anchor){anchor.removeAttribute('aria-hidden');const reset=document.createElement('button');reset.id='reset-leaves';reset.type='button';reset.textContent='reset leaves';anchor.append(reset);reset.onclick=()=>{for(const l of field.leaves){l.ledge=null;l.clearing=true;l.vx=(field.random()-.5)*80;}if(paused){field.leaves=[];render(performance.now());}else schedule();};}
+if(anchor){anchor.removeAttribute('aria-hidden');const reset=document.createElement('button');reset.id='reset-leaves';reset.type='button';reset.textContent='reset leaves';anchor.append(reset);reset.onclick=()=>{drawing.invalidate();for(const l of field.leaves){l.ledge=null;l.clearing=true;l.vx=(field.random()-.5)*80;}if(paused){field.leaves=[];render(performance.now());}else schedule();};}
 function buildTree(){
  branches=[];buds=[];const random=seededRandom(823),w=Math.min(tree.w*.94,450),h=tree.h,ox=(tree.w-w)*.6;
  const branch=(x,y,cx,cy,ex,ey,width,endWidth,start)=>branches.push({x:ox+x*w,y:y*h,cx:ox+cx*w,cy:cy*h,ex:ox+ex*w,ey:ey*h,width,endWidth,start,duration:.6});
@@ -56,7 +53,7 @@ function leafShape(x,y,r,a,color,alpha=1,paint=ctx){
   ctx.save();ctx.translate(x,y);ctx.rotate(a);ctx.globalAlpha*=alpha;ctx.beginPath();ctx.moveTo(-r,0);ctx.quadraticCurveTo(-r*.7,-r*.8,0,-r*.55);ctx.lineTo(r*.45,-r*.9);ctx.lineTo(r*.55,-r*.25);ctx.lineTo(r,0);ctx.quadraticCurveTo(r*.2,r, -r,0);ctx.fillStyle=color;ctx.fill();ctx.strokeStyle='#695b3f';ctx.lineWidth=.45;ctx.stroke();ctx.beginPath();ctx.moveTo(-r*1.3,.3);ctx.lineTo(r*.68,0);ctx.moveTo(-r*.3,0);ctx.lineTo(r*.1,-r*.35);ctx.stroke();ctx.restore();
 }
 function drawTree(elapsed){
-  if(!tree||tree.y+tree.h<scrollY-100||tree.y>scrollY+H+100)return;
+  if(!tree||tree.y+tree.h<paintTop||tree.y>paintBottom)return;
   const drawTime=intro?elapsed:10;
   ctx.save();ctx.beginPath();ctx.rect(bookRect.left,bookRect.top+68,bookRect.right-bookRect.left,bookRect.height);ctx.clip();ctx.translate(tree.x,tree.y);
   const sway=windVisual*.025;
@@ -78,26 +75,35 @@ function drawTree(elapsed){
 }
 function drawMargins(elapsed){
   if(!bookRect)return;const left=bookRect.left+16,right=bookRect.right-15;
-  const maxY=Math.min(bookRect.top+bookRect.height-30,scrollY+H*.88),begin=bookRect.top+95;
+  const maxY=bookRect.top+bookRect.height-30,begin=bookRect.top+95;
   const reveal=intro?clamp(elapsed/2.6,0,1):1;
   for(const [x,sign]of[[left,1],[right,-1]]){
     const end=begin+(maxY-begin)*reveal;
     ctx.beginPath();let started=false;
-    for(let y=Math.max(begin,scrollY-30);y<end;y+=4){const xx=x+Math.sin(y*.016)*5+Math.sin(y*.035)*2+Math.sin(field.time*.4+y*.02)*Math.min(1.3,Math.abs(windVisual)*.015);if(!started){ctx.moveTo(xx,y);started=true;}else ctx.lineTo(xx,y);}
+    for(let y=Math.max(begin,begin+Math.floor((paintTop-begin)/4)*4-4);y<Math.min(end,paintBottom+4);y+=4){const xx=x+Math.sin(y*.016)*5+Math.sin(y*.035)*2+Math.sin(field.time*.4+y*.02)*Math.min(1.3,Math.abs(windVisual)*.015);if(!started){ctx.moveTo(xx,y);started=true;}else ctx.lineTo(xx,y);}
     ctx.strokeStyle='#3f5a34d9';ctx.lineWidth=1.7;ctx.lineCap='round';ctx.stroke();
-    for(let y=begin+30;y<end;y+=66){if(y<scrollY-30||y>scrollY+H+20)continue;const xx=x+Math.sin(y*.016)*5,side=(Math.floor(y/66)%2?1:-1)*sign;ctx.beginPath();ctx.moveTo(xx,y);ctx.quadraticCurveTo(xx+side*16,y-18,xx+side*9,y-24);ctx.quadraticCurveTo(xx+side*1,y-19,xx,y);ctx.fillStyle=Math.floor(y/66)%3?'#5f7d45b3':'#b0612fb3';ctx.fill();ctx.strokeStyle='#33482bd9';ctx.lineWidth=1.1;ctx.stroke();}
+    for(let y=begin+30;y<end;y+=66){if(y<paintTop-30||y>paintBottom+30)continue;const xx=x+Math.sin(y*.016)*5,side=(Math.floor(y/66)%2?1:-1)*sign;ctx.beginPath();ctx.moveTo(xx,y);ctx.quadraticCurveTo(xx+side*16,y-18,xx+side*9,y-24);ctx.quadraticCurveTo(xx+side*1,y-19,xx,y);ctx.fillStyle=Math.floor(y/66)%3?'#5f7d45b3':'#b0612fb3';ctx.fill();ctx.strokeStyle='#33482bd9';ctx.lineWidth=1.1;ctx.stroke();}
   }
 }
 function drawUnderlines(elapsed){
-  underlines.forEach((r,i)=>{const y=r.y;if(y<scrollY-30||y>scrollY+H+30)return;const t=intro?clamp((elapsed-1.2-i*.35)/.65,0,1):1;ctx.beginPath();ctx.moveTo(r.left+4,y);const end=r.left+(r.width-7)*t;ctx.quadraticCurveTo(r.left+r.width*.5,y+4,end,y+1);ctx.strokeStyle='#c5391fd9';ctx.lineWidth=2.4;ctx.lineCap='round';ctx.stroke();if(intro&&t>0&&t<1){ctx.beginPath();ctx.moveTo(end,y);ctx.lineTo(end+16,y-29);ctx.strokeStyle='#626a56';ctx.lineWidth=3;ctx.stroke();}});
+  underlines.forEach((r,i)=>{const y=r.y;if(y<paintTop-30||y>paintBottom+30)return;const t=intro?clamp((elapsed-1.2-i*.35)/.65,0,1):1;ctx.beginPath();ctx.moveTo(r.left+4,y);const end=r.left+(r.width-7)*t;ctx.quadraticCurveTo(r.left+r.width*.5,y+4,end,y+1);ctx.strokeStyle='#c5391fd9';ctx.lineWidth=2.4;ctx.lineCap='round';ctx.stroke();if(intro&&t>0&&t<1){ctx.beginPath();ctx.moveTo(end,y);ctx.lineTo(end+16,y-29);ctx.strokeStyle='#626a56';ctx.lineWidth=3;ctx.stroke();}});
 }
 function render(now){
-  if(!ctx)return;const elapsed=(now-introStart)/1000;
-  ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,canvas.width/dpr,canvas.height/dpr);ctx.save();ctx.translate(0,-scrollY);
-  drawMargins(elapsed);drawTree(elapsed);drawUnderlines(elapsed);
-  for(const l of field.leaves){if(l.y<scrollY-25||l.y>scrollY+H+25)continue;const fade=1;leafShape(l.x,l.y,l.r,l.angle,colors[l.color],fade*.86);}
-  ctx.restore();
+  if(!ctx||!drawing.tiles.length)return;const elapsed=(now-introStart)/1000;
+  const visible=new Set(drawing.visible(scrollY,H));
+  for(const tile of drawing.tiles){
+    // Populate every tile on layout/intro changes. Idle offscreen drawings stay
+    // ready for a fast fling without waiting for a JavaScript scroll event.
+    if(!tile.dirty&&!intro&&!visible.has(tile))continue;
+    ctx=tile.ctx;paintTop=tile.top;paintBottom=tile.top+tile.height;
+    ctx.setTransform(dpr,0,0,dpr,0,0);ctx.clearRect(0,0,W,tile.height);
+    ctx.save();ctx.translate(0,-tile.top);
+    drawMargins(elapsed);drawTree(elapsed);drawUnderlines(elapsed);
+    for(const l of field.leaves){if(l.y<paintTop-25||l.y>paintBottom+25)continue;leafShape(l.x,l.y,l.r,l.angle,colors[l.color],.86);}
+    ctx.restore();tile.dirty=false;
+  }
 }
+
 function release(count=1){
   if(!tree||!buds.length)return;
   for(let i=0;i<count;i++){
@@ -107,14 +113,14 @@ function release(count=1){
     field.spawn(tree.x+b.x,tree.y+b.y,{vx:-35-field.random()*40,vy:8+field.random()*12,color:b.color,r:4+field.random()*3});
   }
 }
-function finishIntro(){intro=false;document.body.classList.remove('drawing-on','intro-pending');if(replay)replay.textContent='Replay drawing';}
+function finishIntro(){intro=false;drawing.invalidate();document.body.classList.remove('drawing-on','intro-pending');if(replay)replay.textContent='Replay drawing';}
 function startIntro(){
   if(!anchor||paused){finishIntro();render(performance.now());return;}
-  introStart=performance.now();intro=true;seedBurst=false;field.leaves=[];spawnAt=0;document.body.classList.remove('drawing-on');void book.offsetWidth;document.body.classList.add('drawing-on');document.body.classList.remove('intro-pending');replay.textContent='Skip drawing';last=0;introDoneAt=introStart+3600;requestPaint();
+  introStart=performance.now();intro=true;seedBurst=false;field.leaves=[];spawnAt=0;document.body.classList.remove('drawing-on');void book.offsetWidth;drawing.invalidate();document.body.classList.add('drawing-on');document.body.classList.remove('intro-pending');replay.textContent='Skip drawing';last=0;introDoneAt=introStart+3600;requestPaint();
 }
 function frame(now){
   raf=0;
-  if(!paintRequested&&now-paintAt<frameInterval-1){schedule();return;}
+  if(now-paintAt<frameInterval-1){schedule();return;}
   paintAt=now;paintRequested=false;scrollY=window.scrollY;
   if(geometryDirty)measure();else if(ledgesDirty)updateLedges(true);
   const dt=last?Math.min((now-last)/1000,.05):0;last=now;
@@ -132,12 +138,12 @@ function frame(now){
 function requestPaint(){paintRequested=true;schedule();}
 function schedule(){if(ctx&&hasStarted&&!raf&&!document.hidden&&(paintRequested||(!paused&&(intro||(tree&&tree.y+tree.h>scrollY&&tree.y<scrollY+H)||field.leaves.some(l=>l.ledge===null)))))raf=requestAnimationFrame(frame);}
 function setPaused(value){paused=value;document.body.classList.toggle("motion-paused",value);motion?.setAttribute('aria-pressed',String(paused));if(motion)motion.textContent=paused?'Resume motion':'Pause motion';motion?.setAttribute('aria-label',paused?'Resume page animation':'Pause page animation');document.dispatchEvent(new CustomEvent('notebook-motion',{detail:{paused}}));if(paused){finishIntro();if(raf)cancelAnimationFrame(raf);raf=0;render(performance.now());}else{last=0;schedule();}}
-replay?.addEventListener('click',()=>{if(intro)finishIntro();else{if(paused)setPaused(false);startIntro();}});
+replay?.addEventListener('click',()=>{if(intro){finishIntro();requestPaint();}else{if(paused)setPaused(false);startIntro();}});
 motion?.addEventListener('click',()=>setPaused(!paused));
 document.addEventListener('motion-request',e=>setPaused(e.detail.paused));
 window.addEventListener('scroll',()=>{const now=performance.now(),y=window.scrollY,delta=y-previousScroll,dt=Math.max(16,now-lastScrollAt);field.gust(clamp(delta/dt*10,-30,30));previousScroll=y;lastScrollAt=now;scrollY=y;requestPaint();},{passive:true});
 window.addEventListener('pointermove',e=>{if(e.pointerType==='touch'||paused)return;const now=performance.now();if(pointer){const dt=Math.max(16,now-pointer.time);const vx=(e.clientX-pointer.x)/dt*1000,vy=(e.clientY-pointer.y)/dt*1000;field.disturb(e.clientX,e.clientY+scrollY,vx,vy);if(Math.abs(vx)>100)field.gust(clamp(vx*.003,-3,3));}pointer={x:e.clientX,y:e.clientY,time:now};},{passive:true});
-window.addEventListener('resize',()=>{if(innerWidth!==W)geometryDirty=true;sizeCanvas();requestPaint();});
+window.addEventListener('resize',()=>{if((document.documentElement.clientWidth||innerWidth)!==W)geometryDirty=true;H=innerHeight;requestPaint();});
 new ResizeObserver(()=>{geometryDirty=true;requestPaint();}).observe(book);
 document.addEventListener('visibilitychange',()=>{last=0;if(document.hidden&&raf){cancelAnimationFrame(raf);raf=0;}else requestPaint();});
 reduced.addEventListener('change',e=>{if(e.matches)setPaused(true);});

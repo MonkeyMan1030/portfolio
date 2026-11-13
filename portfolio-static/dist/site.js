@@ -1,3 +1,3 @@
 // The drawing starts on every home-page load; no session flag suppresses it.
-import './notebook.js?v=12';
-import './sketch.js?v=12';
+import './notebook.js?v=13';
+import './sketch.js?v=13';
